@@ -12,6 +12,16 @@ Y axis = Y extrusion - 13 = 587mm
 
 These numbers have a bit of excess to allow a bit of movement around the outside of the plot area.
 
+A4: 
+X: 297 + 240 = 537
+Y: 210 + 180 = 390
+Y moving axis: 390-13=377
+
+A3: 
+X: 420 + 240 = 660
+Y: 297 + 180 = 477
+Y moving axis: 477-13=464
+
 ![Naming diagram](./diagram.png)
 
 # Hardware build guide
