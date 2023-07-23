@@ -1,5 +1,5 @@
-name: "HF Drawing Machine Controller V1"
-board: "HF Drawing Machine Controller V1"
+name: "HF Plotter"
+board: "HF Plotter"
 # Uses TMC2130
 # Future version idea: could make the steppers have a shared enable pin
 
@@ -11,6 +11,7 @@ stepping:
   disable_delay_us: 0
 
 axes:
+  
   x:
     steps_per_mm: 800
     max_rate_mm_per_min: 2000
@@ -26,8 +27,9 @@ axes:
       settle_ms: 500
       seek_scaler: 1.100
       feed_scaler: 1.100
+    
     motor0:
-      limit_all_pin: gpio.32:low:pu
+      limit_all_pin: NO_PIN
       tmc_2130:
         disable_pin: gpio.22
         direction_pin: gpio.26
@@ -85,6 +87,7 @@ axes:
         use_enable: true
     motor1:
       null_motor:
+
   z:
     steps_per_mm: 800
     max_rate_mm_per_min: 2000
@@ -104,7 +107,7 @@ axes:
     motor0:
       limit_all_pin: NO_PIN
       tmc_2130:
-        disable_pin: gpio.3:pd or :pu
+        disable_pin: gpio.3
         direction_pin: gpio.13
         step_pin: gpio.21
         cs_pin: gpio.14
