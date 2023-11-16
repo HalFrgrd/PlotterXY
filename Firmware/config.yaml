@@ -1,138 +1,118 @@
-name: "HF Drawing Machine Controller V1"
-board: "HF Drawing Machine Controller V1"
-# Uses TMC2130
-# Future version idea: could make the steppers have a shared enable pin
+board: MKS-DLC32
+name: K40 MOD
+meta: 2022-12-27 by Tong
+
+kinematics:
+  Cartesian:
 
 stepping:
-  engine: RMT
+  engine: I2S_STATIC
+#Static only, Stream Produces a second "ghost line" when doing engraving/Filling
+# 255 keeps motors neabled at all times
   idle_ms: 255
-  dir_delay_us: 1
-  pulse_us: 2
+  pulse_us: 6
+  dir_delay_us: 10
   disable_delay_us: 0
 
 axes:
+  shared_stepper_disable_pin: I2SO.0
   x:
-    steps_per_mm: 800
-    max_rate_mm_per_min: 2000
-    acceleration_mm_per_sec2: 25
-    max_travel_mm: 1000
-    soft_limits: false
+    steps_per_mm: 80.000
+    max_rate_mm_per_min: 1000.000
+    acceleration_mm_per_sec2: 25.000
+    max_travel_mm: 300.000
+    soft_limits: true
     homing:
-      cycle: 2
+      cycle: 1
       positive_direction: false
-      mpos_mm: 150.000
-      feed_mm_per_min: 100.000
-      seek_mm_per_min: 200.000
+      mpos_mm: 0.000
+      feed_mm_per_min: 300.000
+      seek_mm_per_min: 6000.000
       settle_ms: 500
       seek_scaler: 1.100
       feed_scaler: 1.100
+
     motor0:
-      limit_all_pin: gpio.32:low:pu
-      tmc_2130:
-        disable_pin: gpio.22
-        direction_pin: gpio.26
-        step_pin: gpio.17
-        cs_pin: gpio.2
-        r_sense_ohms: 0.110
-        run_amps: 0.250
-        hold_amps: 0.250
-        microsteps: 32
-        stallguard: 0
-        stallguard_debug: false
-        toff_disable: 0
-        toff_stealthchop: 5
-        toff_coolstep: 3
-        run_mode: StealthChop
-        homing_mode: StealthChop
-        use_enable: true
-    motor1:
-      null_motor:
+      limit_neg_pin: gpio.36
+      hard_limits: false
+      pulloff_mm: 1.000
+      stepstick:
+        step_pin: I2SO.1
+        direction_pin: I2SO.2:low
+
 
   y:
-    steps_per_mm: 800
-    max_rate_mm_per_min: 2000
-    acceleration_mm_per_sec2: 25
-    max_travel_mm: 1000
-    soft_limits: false
+    steps_per_mm: 80.000
+    max_rate_mm_per_min: 1000.000
+    acceleration_mm_per_sec2: 25.000
+    max_travel_mm: 300.000
+    soft_limits: true
     homing:
-      cycle: 2
+      cycle: 1
       positive_direction: false
-      mpos_mm: 150.000
-      feed_mm_per_min: 100.000
-      seek_mm_per_min: 200.000
+      mpos_mm: 0.000
+      feed_mm_per_min: 300.000
+      seek_mm_per_min: 6000.000
       settle_ms: 500
       seek_scaler: 1.100
       feed_scaler: 1.100
 
     motor0:
-      limit_all_pin: NO_PIN
-      tmc_2130:
-        disable_pin: gpio.1
-        direction_pin: gpio.25
-        step_pin: gpio.4
-        cs_pin: gpio.18
-        r_sense_ohms: 0.110
-        run_amps: 0.250
-        hold_amps: 0.250
-        microsteps: 32
-        stallguard: 0
-        stallguard_debug: false
-        toff_disable: 0
-        toff_stealthchop: 5
-        toff_coolstep: 3
-        run_mode: StealthChop
-        homing_mode: StealthChop
-        use_enable: true
-    motor1:
-      null_motor:
+      limit_neg_pin: gpio.35
+      hard_limits: false
+      pulloff_mm: 1.000
+      stepstick:
+        step_pin: I2SO.5
+        direction_pin: I2SO.6:high
+
   z:
-    steps_per_mm: 800
-    max_rate_mm_per_min: 2000
-    acceleration_mm_per_sec2: 25
-    max_travel_mm: 1000
-    soft_limits: false
+    steps_per_mm: 157.750
+    max_rate_mm_per_min: 12000.000
+    acceleration_mm_per_sec2: 500.000
+    max_travel_mm: 80.000
+    soft_limits: true
     homing:
-      cycle: 2
+      cycle: 0
       positive_direction: false
-      mpos_mm: 150.000
-      feed_mm_per_min: 100.000
-      seek_mm_per_min: 200.000
+      mpos_mm: 0.000
+      feed_mm_per_min: 300.000
+      seek_mm_per_min: 1000.000
       settle_ms: 500
       seek_scaler: 1.100
       feed_scaler: 1.100
 
     motor0:
-      limit_all_pin: NO_PIN
-      tmc_2130:
-        disable_pin: gpio.3:pd or :pu
-        direction_pin: gpio.13
-        step_pin: gpio.21
-        cs_pin: gpio.14
-        r_sense_ohms: 0.110
-        run_amps: 0.250
-        hold_amps: 0.250
-        microsteps: 32
-        stallguard: 0
-        stallguard_debug: false
-        toff_disable: 0
-        toff_stealthchop: 5
-        toff_coolstep: 3
-        run_mode: StealthChop
-        homing_mode: StealthChop
-        use_enable: true
-        
+      limit_neg_pin: gpio.34
+      hard_limits: false
+      pulloff_mm: 1.000
+      stepstick:
+        step_pin: I2SO.3
+        direction_pin: I2SO.4
+
+i2so:
+  bck_pin: gpio.16
+  data_pin: gpio.21
+  ws_pin: gpio.17
+
 spi:
-  miso_pin: gpio.19
-  mosi_pin: gpio.23
-  sck_pin: gpio.5
+  miso_pin: gpio.12
+  mosi_pin: gpio.13
+  sck_pin: gpio.14
 
 sdcard:
-  cs_pin: NO_PIN
-  card_detect_pin: NO_PIN
+  cs_pin: gpio.15
+  card_detect_pin: gpio.39
 
 coolant:
   flood_pin: NO_PIN
-  mist_pin:  NO_PIN
+  mist_pin: NO_PIN
+  delay_ms: 0
 
 probe:
   pin: NO_PIN
+
+start:
+  must_home: false
+
+# 5,18,19,22,23,25,26,27,32,33,39,I2SO.7
+# SDA 0 / SCL 4

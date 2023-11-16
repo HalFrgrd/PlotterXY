@@ -10,8 +10,11 @@ stepping:
   pulse_us: 2
   disable_delay_us: 0
 
+kinematics:
+  corexy:
+
 axes:
-  
+  shared_stepper_disable_pin: NO_PIN
   x:
     steps_per_mm: 800
     max_rate_mm_per_min: 2000
@@ -29,9 +32,13 @@ axes:
       feed_scaler: 1.100
     
     motor0:
+      limit_neg_pin: NO_PIN
+      limit_pos_pin: NO_PIN
       limit_all_pin: NO_PIN
+      hard_limits: false
+      pulloff_mm: 1.000
       tmc_2130:
-        disable_pin: gpio.22
+        disable_pin: gpio.22:high
         direction_pin: gpio.26
         step_pin: gpio.17
         cs_pin: gpio.2
@@ -41,12 +48,12 @@ axes:
         microsteps: 32
         stallguard: 0
         stallguard_debug: false
-        toff_disable: 0
-        toff_stealthchop: 5
-        toff_coolstep: 3
         run_mode: StealthChop
         homing_mode: StealthChop
         use_enable: true
+        toff_disable: 3
+        toff_stealthchop: 5
+        toff_coolstep: 3
     motor1:
       null_motor:
 
@@ -67,9 +74,11 @@ axes:
       feed_scaler: 1.100
 
     motor0:
+      limit_neg_pin: NO_PIN
+      limit_pos_pin: NO_PIN
       limit_all_pin: NO_PIN
       tmc_2130:
-        disable_pin: gpio.1
+        disable_pin: gpio.1:high
         direction_pin: gpio.25
         step_pin: gpio.4
         cs_pin: gpio.18
@@ -79,12 +88,13 @@ axes:
         microsteps: 32
         stallguard: 0
         stallguard_debug: false
-        toff_disable: 0
-        toff_stealthchop: 5
-        toff_coolstep: 3
         run_mode: StealthChop
         homing_mode: StealthChop
-        use_enable: true
+        use_enable: false
+        toff_disable: 1
+        toff_stealthchop: 5
+        toff_coolstep: 3
+
     motor1:
       null_motor:
 
@@ -107,7 +117,7 @@ axes:
     motor0:
       limit_all_pin: NO_PIN
       tmc_2130:
-        disable_pin: gpio.3
+        disable_pin: gpio.3:low
         direction_pin: gpio.13
         step_pin: gpio.21
         cs_pin: gpio.14
@@ -117,12 +127,9 @@ axes:
         microsteps: 32
         stallguard: 0
         stallguard_debug: false
-        toff_disable: 0
-        toff_stealthchop: 5
-        toff_coolstep: 3
         run_mode: StealthChop
         homing_mode: StealthChop
-        use_enable: true
+        use_enable: false
         
 spi:
   miso_pin: gpio.19
@@ -139,3 +146,6 @@ coolant:
 
 probe:
   pin: NO_PIN
+
+start:
+  must_home: false
