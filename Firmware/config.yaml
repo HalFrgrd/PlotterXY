@@ -3,10 +3,10 @@ name: K40 MOD
 meta: 2022-12-27 by Tong
 
 kinematics:
-  Cartesian:
+  corexy:
 
 stepping:
-  engine: I2S_STATIC
+  engine: I2S_STREAM
 #Static only, Stream Produces a second "ghost line" when doing engraving/Filling
 # 255 keeps motors neabled at all times
   idle_ms: 255
@@ -17,14 +17,14 @@ stepping:
 axes:
   shared_stepper_disable_pin: I2SO.0
   x:
-    steps_per_mm: 80.000
-    max_rate_mm_per_min: 1000.000
-    acceleration_mm_per_sec2: 25.000
+    steps_per_mm: 157.500
+    max_rate_mm_per_min: 200.000
+    acceleration_mm_per_sec2: 200.000
     max_travel_mm: 300.000
     soft_limits: true
     homing:
-      cycle: 1
-      positive_direction: false
+      cycle: 2
+      positive_direction: true
       mpos_mm: 0.000
       feed_mm_per_min: 300.000
       seek_mm_per_min: 6000.000
@@ -33,19 +33,19 @@ axes:
       feed_scaler: 1.100
 
     motor0:
-      limit_neg_pin: gpio.36
+      limit_pos_pin: gpio.36:low
       hard_limits: false
-      pulloff_mm: 1.000
+      pulloff_mm: 10.000
       stepstick:
         step_pin: I2SO.1
-        direction_pin: I2SO.2:low
+        direction_pin: I2SO.2:high
 
 
   y:
-    steps_per_mm: 80.000
-    max_rate_mm_per_min: 1000.000
-    acceleration_mm_per_sec2: 25.000
-    max_travel_mm: 300.000
+    steps_per_mm: 157.500
+    max_rate_mm_per_min: 200.000
+    acceleration_mm_per_sec2: 200.000
+    max_travel_mm: 600.000
     soft_limits: true
     homing:
       cycle: 1
@@ -58,9 +58,9 @@ axes:
       feed_scaler: 1.100
 
     motor0:
-      limit_neg_pin: gpio.35
+      limit_neg_pin: gpio.35:low
       hard_limits: false
-      pulloff_mm: 1.000
+      pulloff_mm: 10.000
       stepstick:
         step_pin: I2SO.5
         direction_pin: I2SO.6:high
