@@ -49,3 +49,5 @@ test_application/
 jlcpcb/
 
 esp32_basics/
+
+*.gcode

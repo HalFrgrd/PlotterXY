@@ -17,73 +17,73 @@ stepping:
 axes:
   shared_stepper_disable_pin: I2SO.0
   x:
-    steps_per_mm: 157.500
-    max_rate_mm_per_min: 200.000
-    acceleration_mm_per_sec2: 200.000
-    max_travel_mm: 300.000
+    steps_per_mm: 78.750
+    max_rate_mm_per_min: 3000.000
+    acceleration_mm_per_sec2: 1000.000
+    max_travel_mm: 440.000
     soft_limits: true
     homing:
       cycle: 2
-      positive_direction: true
+      positive_direction: false
       mpos_mm: 0.000
       feed_mm_per_min: 300.000
-      seek_mm_per_min: 6000.000
+      seek_mm_per_min: 700.000
       settle_ms: 500
       seek_scaler: 1.100
       feed_scaler: 1.100
 
     motor0:
-      limit_pos_pin: gpio.36:low
-      hard_limits: false
-      pulloff_mm: 10.000
+      limit_neg_pin: gpio.36:low
+      hard_limits: true
+      pulloff_mm: 6.000
       stepstick:
         step_pin: I2SO.1
-        direction_pin: I2SO.2:high
+        direction_pin: I2SO.2:low
 
 
   y:
-    steps_per_mm: 157.500
-    max_rate_mm_per_min: 200.000
-    acceleration_mm_per_sec2: 200.000
-    max_travel_mm: 600.000
+    steps_per_mm: 78.750
+    max_rate_mm_per_min: 3000.000
+    acceleration_mm_per_sec2: 1000.000
+    max_travel_mm: 320.000
     soft_limits: true
     homing:
       cycle: 1
       positive_direction: false
       mpos_mm: 0.000
       feed_mm_per_min: 300.000
-      seek_mm_per_min: 6000.000
+      seek_mm_per_min: 700.000
       settle_ms: 500
       seek_scaler: 1.100
       feed_scaler: 1.100
 
     motor0:
       limit_neg_pin: gpio.35:low
-      hard_limits: false
-      pulloff_mm: 10.000
+      hard_limits: true
+      pulloff_mm: 6.000
       stepstick:
         step_pin: I2SO.5
-        direction_pin: I2SO.6:high
+        direction_pin: I2SO.6:low
 
   z:
-    steps_per_mm: 157.750
-    max_rate_mm_per_min: 12000.000
-    acceleration_mm_per_sec2: 500.000
-    max_travel_mm: 80.000
+    steps_per_mm: 50.000
+    max_rate_mm_per_min: 800.000
+    acceleration_mm_per_sec2: 800.000
+    max_travel_mm: 8.000
     soft_limits: true
     homing:
       cycle: 0
-      positive_direction: false
+      positive_direction: true
       mpos_mm: 0.000
-      feed_mm_per_min: 300.000
-      seek_mm_per_min: 1000.000
+      feed_mm_per_min: 50.000
+      seek_mm_per_min: 50.000
       settle_ms: 500
       seek_scaler: 1.100
       feed_scaler: 1.100
 
     motor0:
-      limit_neg_pin: gpio.34
-      hard_limits: false
+      limit_pos_pin: gpio.34:low
+      hard_limits: true
       pulloff_mm: 1.000
       stepstick:
         step_pin: I2SO.3

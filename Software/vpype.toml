@@ -16,10 +16,10 @@
 default_profile = "plotterxy"
 
 [gwrite.plotterxy]
-document_start = "G17 G21 G90 G54 M3\n"
-segment_first = "G00 X{x:.2f} Y{y:.2f}\nG01 Z0 F1000\nG4 P0.250\n"
-segment = "G01 X{x:.2f} Y{y:.2f} F5000\n"
-segment_last = "G01 X{x:.2f} Y{y:.2f} F5000\nG01 Z1 F1000\n"
+document_start = "G17 G21 G90 G54\n"
+segment_first = "G00 X{x:.2f} Y{y:.2f}\nG01 Z-8.00 F800\nG4 P0.100\n"
+segment = "G01 X{x:.2f} Y{y:.2f} F3000\n"
+segment_last = "G01 X{x:.2f} Y{y:.2f} F3000\nG01 Z0.00 F800\nG4 P0.100\n"
 document_end = ""
 unit = "mm"
 invert_y = "True"
