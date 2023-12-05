@@ -17,9 +17,9 @@ stepping:
 axes:
   shared_stepper_disable_pin: I2SO.0
   x:
-    steps_per_mm: 78.750
-    max_rate_mm_per_min: 3000.000
-    acceleration_mm_per_sec2: 1000.000
+    steps_per_mm: 80.000
+    max_rate_mm_per_min: 4000.000
+    acceleration_mm_per_sec2: 700.000
     max_travel_mm: 440.000
     soft_limits: true
     homing:
@@ -27,7 +27,7 @@ axes:
       positive_direction: false
       mpos_mm: 0.000
       feed_mm_per_min: 300.000
-      seek_mm_per_min: 700.000
+      seek_mm_per_min: 1800.000
       settle_ms: 500
       seek_scaler: 1.100
       feed_scaler: 1.100
@@ -35,24 +35,24 @@ axes:
     motor0:
       limit_neg_pin: gpio.36:low
       hard_limits: true
-      pulloff_mm: 6.000
+      pulloff_mm: 6.100
       stepstick:
         step_pin: I2SO.1
         direction_pin: I2SO.2:low
 
 
   y:
-    steps_per_mm: 78.750
-    max_rate_mm_per_min: 3000.000
-    acceleration_mm_per_sec2: 1000.000
+    steps_per_mm: 80.000
+    max_rate_mm_per_min: 4000.000
+    acceleration_mm_per_sec2: 700.000
     max_travel_mm: 320.000
     soft_limits: true
     homing:
       cycle: 1
       positive_direction: false
       mpos_mm: 0.000
-      feed_mm_per_min: 300.000sus
-      seek_mm_per_min: 700.000
+      feed_mm_per_min: 300.000
+      seek_mm_per_min: 1800.000
       settle_ms: 500
       seek_scaler: 1.100
       feed_scaler: 1.100
@@ -60,7 +60,7 @@ axes:
     motor0:
       limit_neg_pin: gpio.35:low
       hard_limits: true
-      pulloff_mm: 6.000
+      pulloff_mm: 8.500
       stepstick:
         step_pin: I2SO.5
         direction_pin: I2SO.6:low

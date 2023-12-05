@@ -27,3 +27,7 @@ The software folder contains a configuration file for use with vpype and vpype-g
 # Donate
 
 If you appreciate this project, please consider donating; https://www.paypal.com/donate/?hosted_button_id=BHS97LUK2LCB6
+
+
+# FluidNC Web ui:
+work coordinates vs machine coordinates?
