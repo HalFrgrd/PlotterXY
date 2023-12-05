@@ -51,7 +51,7 @@ axes:
       cycle: 1
       positive_direction: false
       mpos_mm: 0.000
-      feed_mm_per_min: 300.000
+      feed_mm_per_min: 300.000sus
       seek_mm_per_min: 700.000
       settle_ms: 500
       seek_scaler: 1.100
@@ -67,8 +67,8 @@ axes:
 
   z:
     steps_per_mm: 50.000
-    max_rate_mm_per_min: 800.000
-    acceleration_mm_per_sec2: 800.000
+    max_rate_mm_per_min: 2000.000
+    acceleration_mm_per_sec2: 2000.000
     max_travel_mm: 8.000
     soft_limits: true
     homing:

@@ -51,3 +51,4 @@ jlcpcb/
 esp32_basics/
 
 *.gcode
+output.svg
