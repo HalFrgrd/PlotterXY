@@ -57,4 +57,5 @@ output.svg
 
 Software/code/maze/sketches
 
-secrets.py
+terraintile_cache/
+__pycache__/
