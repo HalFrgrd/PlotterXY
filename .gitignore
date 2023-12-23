@@ -52,3 +52,9 @@ esp32_basics/
 
 *.gcode
 output.svg
+
+.venv/**
+
+Software/code/maze/sketches
+
+secrets.py

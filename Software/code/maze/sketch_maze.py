@@ -1,36 +1,26 @@
-
-import svgwrite
+import vsketch
 import numpy as np
 from beartype import beartype
 from dataclasses import dataclass
 from collections import defaultdict
 from typing import Optional
-import ipdb
-
-################## CONFIG
 
 SHEET_HEIGHT=297 #mm Y
 SHEET_WIDTH=420 #mm X
 
-STROKE_WIDTH = 10
 
 CELL_WIDTH=30 #mm
 NUM_X_CELLS=(SHEET_WIDTH - 50) // CELL_WIDTH
 NUM_Y_CELLS=(SHEET_HEIGHT - 50) // CELL_WIDTH
 
+
 NUM_LANES = 2
-NUM_PATHS = 4
+NUM_PATHS = 1
 np.random.seed(1)
 
-PATH_WIDTH_MULT=0.8
 
 
 ################## Drawing
-
-dwg = svgwrite.Drawing(profile="full", size=(f"{SHEET_WIDTH}mm",f"{SHEET_HEIGHT}mm"))
-dwg.viewbox(0,0,SHEET_WIDTH, SHEET_HEIGHT)
-
-
 
 
 @dataclass
@@ -62,7 +52,7 @@ class Coord:
     _SVG_OFFSET_X = (SHEET_WIDTH - CELL_WIDTH * NUM_X_CELLS) * 0.5
     _SVG_OFFSET_Y = (SHEET_HEIGHT- CELL_WIDTH * NUM_Y_CELLS) * 0.5
     @beartype
-    def toSVGCoord(self) -> 'SVGCoord':
+    def toSVGCoord(self):
         return SVGCoord(self._SVG_OFFSET_X + self.x * CELL_WIDTH, self._SVG_OFFSET_Y + self.y * CELL_WIDTH)
 
 
@@ -100,7 +90,7 @@ class SVGCoord:
 
     @staticmethod
     @beartype
-    def interpolateSVGCoords(start:  'SVGCoord', end:  'SVGCoord', proportion: float):
+    def interpolateSVGCoords(start, end, proportion: float):
         return start + (end - start)*proportion
 
 
@@ -145,8 +135,6 @@ class GlobalLaneTracker:
     indices = np.arange(NUM_LANES)
 
     # self.pathsTaken[i,j,k] == True means there is a path at coord i,j
-
-    
     def __init__(self):
         self.pathsTaken = np.zeros((NUM_X_CELLS,NUM_Y_CELLS,NUM_LANES)).astype(bool)
         self.transitions = defaultdict(list)
@@ -154,7 +142,6 @@ class GlobalLaneTracker:
     def isHighestPathAtStart(self, coord: Coord):
         pathsAtCoord = self.pathsTaken[coord.x, coord.y, :]
         assert coord.lane >= 0
-        # ipdb.set_trace()
         assert pathsAtCoord[coord.lane]
         return np.any(pathsAtCoord[coord.lane+1:]) == False
 
@@ -163,8 +150,6 @@ class GlobalLaneTracker:
         # pathsAtEnd = self.pathsTaken[segmentEnd.x, segmentEnd.y, :]
         # assert pathsAtStart[segmentStart.z]
         # assert pathsAtEnd[segmentEnd.z]
-        
-
 
         transitionsSameDir = self.transitions[(segmentStart.x, segmentStart.y, segmentEnd.x, segmentEnd.y)]
         transitionsOppoDir = self.transitions[(segmentEnd.x, segmentEnd.y, segmentStart.x, segmentStart.y)]
@@ -189,7 +174,6 @@ class GlobalLaneTracker:
         if unusedIndices.size > 0:
             lane = np.random.choice(unusedIndices)
             pathsAtCoord[lane] = True
-            # ipdb.set_trace()
             if currentCoord is not None:
                 self.transitions[(currentCoord.x, currentCoord.y, newCoord.x, newCoord.y)].append((currentCoord.lane, lane))
 
@@ -202,27 +186,6 @@ class GlobalLaneTracker:
         pathsAtCoord = self.pathsTaken[coord.x, coord.y, :]
         return pathsAtCoord.sum()
 
-paths = []
-globalLaneTracker = GlobalLaneTracker()
-   
-for i in range(NUM_PATHS):
-    path = MazePath()
-
-    for move_num in range(30):
-        possNewCoords = path.possNewCoords()
-        np.random.shuffle(possNewCoords)
-        possNewCoords.sort(key=globalLaneTracker.getHowManyLanesInUse)
-        newCoord = possNewCoords[0]
-
-        if (lane := globalLaneTracker.tryMoveHere(path.getLastCoord(), newCoord)) is not None:
-            newCoord.lane = lane
-            path.addPoint(newCoord)
-        else:
-            print("Length of path is ", len(path.points))
-            break
-
-    paths.append(path)
-
 def randomColor():
     return f"rgb({np.random.randint(0,256)},{np.random.randint(0,256)},{np.random.randint(0,256)})"
 
@@ -232,16 +195,34 @@ def isLeft(a: SVGCoord, b: SVGCoord, c: SVGCoord):
     return (b.x - a.x)*(c.y - a.y) - (b.y - a.y)*(c.x - a.x) > 0
 
 class SimpleDrawing:
-
     @staticmethod
     @beartype
-    def drawArc(start, end, radius=None):
-        path = svgwrite.path.Path('m', stroke=color, fill="none")
-        path.push((start.x, start.y))
-        if radius is None:
-            radius = max(abs((start-end).x), abs((start-end).y))
-        path.push_arc(target=(end.x, end.y), rotation=0, large_arc=False, r=radius, absolute=True)
-        dwg.add(path)
+    def drawArc(vsk, start, end, clockwise):
+        """
+        Draw a 90 degree arc between these two points
+        """
+
+
+
+   
+        if start.x < end.x:
+            if start.y < end.y:
+                startAngle, stopAngle = 0, 270
+            else:
+                startAngle, stopAngle = 180, 90
+        else:
+            if start.y < end.y:
+                startAngle, stopAngle = 90, 0
+            else:
+                startAngle, stopAngle = 90, 180
+
+        vsk.line(start.x, start.y, end.x, end.y)
+        vsk.circle(start.x, start.y, 1)
+
+        if clockwise:
+            vsk.arc(topLeft.x, topLeft.y, bottomRight.x, bottomRight.y, startAngle, stopAngle, degrees=True, mode="")
+        # vsk.line(start.x, start.y, end.x, end.y)
+        else:
 
     @staticmethod
     @beartype
@@ -268,21 +249,18 @@ class SimpleDrawing:
 
     @staticmethod
     @beartype
-    def drawRectStartEnd(start: SVGCoord, end:SVGCoord, color, opacity):
+    def drawRectStartEnd(vsk, start: SVGCoord, end:SVGCoord):
         startX = min(start.x, end.x)
         startY = min(start.y, end.y)
         endX = max(start.x, end.x)
         endY = max(start.y, end.y)
 
-        rect = dwg.rect((startX, startY), (endX-startX, endY-startY), stroke=color, fill="none")
-        # rect['fill-opacity'] = opacity
-        dwg.add(rect)
+        vsk.rect(startX, startY, endX-startX, endY-startY)
 
-        # dwg.add(dwg.line((startX, startY), (endX, endY), stroke="black", stroke_width = 1))
 
 
     @staticmethod
-    def drawSegmentMid(segmentStart: Coord, segmentEnd: Coord, color,completion):
+    def drawSegmentMid(vsk, segmentStart: Coord, segmentEnd: Coord, color,completion):
         assert segmentStart.isValid() and segmentEnd.isValid()
 
         startA, startB, endA, endB = SimpleDrawing.getLineCoords(
@@ -293,8 +271,8 @@ class SimpleDrawing:
         #     completion,
         # )
 
-        dwg.add(dwg.line((startA.x, startA.y), (endA.x, endA.y), stroke=color, stroke_width = 1))
-        dwg.add(dwg.line((startB.x, startB.y), (endB.x, endB.y), stroke=color, stroke_width = 1))
+        vsk.line(startA.x, startA.y, endA.x, endA.y)
+        vsk.line(startB.x, startB.y, endB.x, endB.y)
 
 
     @staticmethod
@@ -302,16 +280,13 @@ class SimpleDrawing:
     def getCornerPoints(start: SVGCoord, end: SVGCoord, applyTo: SVGCoord) -> tuple[SVGCoord, SVGCoord]:
         dir = end-start
         if dir.y == 0:
-            offset = abs(dir.x) * PATH_WIDTH_MULT
-            # print(offset)
+            offset = abs(dir.x) * 0.8
             a,b = applyTo+(0, offset), applyTo-(0,offset)
-            # dwg.add(dwg.line((a.x, a.y), (b.x, b.y), stroke="black", stroke_width = 1))
             return a,b
 
         if dir.x == 0:
-            offset = abs(dir.y) * PATH_WIDTH_MULT
+            offset = abs(dir.y) * 0.8
             a,b  = applyTo+(offset, 0), applyTo-(offset, 0)
-            # dwg.add(dwg.line((a.x, a.y), (b.x, b.y), stroke="black", stroke_width = 1))
             return a,b
         assert False
 
@@ -337,124 +312,145 @@ class SimpleDrawing:
 
     @beartype
     @staticmethod
-    def drawSegment(prevPoint: Optional[Coord], point: Coord, nextPoint: Optional[Coord], color,completion):
+    def drawSegment(vsk, prevPoint: Optional[Coord], point: Coord, nextPoint: Optional[Coord]):
         # assert segmentStart.isValid() and segmentEnd.isValid()
 
-        if nextPoint is None: # we are the end
-            oldA, oldB = SimpleDrawing.getEndCapPoints(
+        if nextPoint is None: # at the end
+            startA, startB = SimpleDrawing.getEndCapPoints(
                     prevPoint.toSVGCoord(),
                     point.toSVGCoord(),
                     )
-            if isLeft(prevPoint.toSVGCoord(), point.toSVGCoord(), oldA):
-                oldA, oldB = oldB, oldA
-            SimpleDrawing.drawArc(oldA, oldB, CELL_WIDTH*0.35*0.5)
+            if isLeft(prevPoint.toSVGCoord(), point.toSVGCoord(), startA):
+                startA, startB = startB, startA
+            # SimpleDrawing.drawArc(vsk, startA, startB, CELL_WIDTH*0.35*0.5)
             return
 
 
-        if prevPoint is None: # starting
-            oldA, oldB = SimpleDrawing.getEndCapPoints(
+        if prevPoint is None: # at the start
+            startA, startB = SimpleDrawing.getEndCapPoints(
                     nextPoint.toSVGCoord(),
                     point.toSVGCoord(),
                     )
-            if isLeft(nextPoint.toSVGCoord(), point.toSVGCoord(), oldA):
-                oldA, oldB = oldB, oldA
-            SimpleDrawing.drawArc(oldA, oldB, CELL_WIDTH*0.35*0.5)
+            if isLeft(nextPoint.toSVGCoord(), point.toSVGCoord(), startA):
+                startA, startB = startB, startA
+            # SimpleDrawing.drawArc(vsk, startA, startB, CELL_WIDTH*0.35*0.5)
             return
 
+        # straight line
         if (prevPoint.x == point.x == nextPoint.x) or (prevPoint.y == point.y == nextPoint.y):
+            dir = point - prevPoint
 
-            SimpleDrawing.drawRectStartEnd(
-                *SimpleDrawing.getRectangleStartEnd(
-                    SVGCoord.interpolateSVGCoords(prevPoint.toSVGCoord(), point.toSVGCoord(), 0.55),
-                    SVGCoord.interpolateSVGCoords(point.toSVGCoord(), nextPoint.toSVGCoord(), 0.45)
-                ),
-                color,
-                completion,
-            )
+            offset = (0, CELL_WIDTH*0.4) if dir.y == 0 else (CELL_WIDTH*0.4, 0)
+            startA = SVGCoord.interpolateSVGCoords(prevPoint.toSVGCoord(), point.toSVGCoord(), 0.50) + offset
+            startB = SVGCoord.interpolateSVGCoords(prevPoint.toSVGCoord(), point.toSVGCoord(), 0.50) - offset
 
-        else:
+            endA = SVGCoord.interpolateSVGCoords(point.toSVGCoord(), nextPoint.toSVGCoord(), 0.50) + offset
+            endB = SVGCoord.interpolateSVGCoords(point.toSVGCoord(), nextPoint.toSVGCoord(), 0.50) - offset
+
+            vsk.line(startA.x, startA.y, endA.x, endA.y)
+            vsk.line(startB.x, startB.y, endB.x, endB.y)
 
 
-            
-            oldA, oldB = SimpleDrawing.getCornerPoints(
-                    SVGCoord.interpolateSVGCoords(prevPoint.toSVGCoord(), point.toSVGCoord(), 0.55),
-                    point.toSVGCoord(),
-                    applyTo=SVGCoord.interpolateSVGCoords(prevPoint.toSVGCoord(), point.toSVGCoord(), 0.55),
-                    )
-            if not isLeft(prevPoint.toSVGCoord(), point.toSVGCoord(), oldA):
-                oldA, oldB = oldB, oldA
-            assert isLeft(prevPoint.toSVGCoord(), point.toSVGCoord(), oldA)
+        else: # round a corner
 
-            newA, newB = SimpleDrawing.getCornerPoints(
-                    point.toSVGCoord(),
-                    SVGCoord.interpolateSVGCoords(point.toSVGCoord(), nextPoint.toSVGCoord(), 0.45),
-                    applyTo=SVGCoord.interpolateSVGCoords(point.toSVGCoord(), nextPoint.toSVGCoord(), 0.45),
-                )
-            if not isLeft(point.toSVGCoord(), nextPoint.toSVGCoord(), newA):
-                newA, newB = newB, newA
-            assert isLeft(point.toSVGCoord(), nextPoint.toSVGCoord(), newA)
-            # points = sorted(points)
-            # shape = svgwrite.shapes.Polygon([(oldA.x, oldA.y),(oldB.x, oldB.y),(newB.x, newB.y),(newA.x, newA.y)], fill=color)
-            # shape["fill-opacity"] = completion
-            # dwg.add(shape)
+            startMidPoint = SVGCoord.interpolateSVGCoords(prevPoint.toSVGCoord(), point.toSVGCoord(), 0.50)
+            startDir = point - prevPoint
+            offset = (0, CELL_WIDTH*0.4) if startDir.y == 0 else (CELL_WIDTH*0.4, 0)            
+            startA, startB = startMidPoint+offset, startMidPoint-offset
+            if not isLeft(prevPoint.toSVGCoord(), point.toSVGCoord(), startA):
+                startA, startB = startB, startA
+            assert isLeft(prevPoint.toSVGCoord(), point.toSVGCoord(), startA)
 
-            # def drawArc(start, end):
-            #     path = svgwrite.path.Path('m', stroke=color, fill="none")
-            #     path.push((start.x, start.y))
-            #     path.push_arc(target=(end.x, end.y), rotation=0, large_arc=False, r=max(abs((start-end).x), abs((start-end).y)), absolute=True)
-            #     dwg.add(path)
+            endMidPoint = SVGCoord.interpolateSVGCoords(point.toSVGCoord(), nextPoint.toSVGCoord(), 0.50)
+            endDir = nextPoint - point
+            offset = (0, CELL_WIDTH*0.4) if endDir.y == 0 else (CELL_WIDTH*0.4, 0)            
+            endA, endB = endMidPoint+offset, endMidPoint-offset
+            if not isLeft(point.toSVGCoord(), nextPoint.toSVGCoord(), endA):
+                endA, endB = endB, endA
+            assert isLeft(point.toSVGCoord(), nextPoint.toSVGCoord(), endA)
 
-            if isLeft(prevPoint.toSVGCoord(), point.toSVGCoord(), nextPoint.toSVGCoord()):
-                SimpleDrawing.drawArc(oldA, newA)
-                SimpleDrawing.drawArc(oldB, newB)
-            else:
-                SimpleDrawing.drawArc(newA, oldA)
-                SimpleDrawing.drawArc(newB, oldB)
+
+            # if isLeft(prevPoint.toSVGCoord(), point.toSVGCoord(), nextPoint.toSVGCoord()):
+            SimpleDrawing.drawArc(vsk, startA, endA)
+            SimpleDrawing.drawArc(vsk, startB, endB)
+            # else:
+            #     SimpleDrawing.drawArc(vsk, endA, startA)
+            #     SimpleDrawing.drawArc(vsk, endB, startB)
 
         # SimpleDrawing.drawRectStartEnd(
         #     *SimpleDrawing.getRectangleStartEnd(
         #         SVGCoord.interpolateSVGCoords(segmentStart.toSVGCoord(), segmentEnd.toSVGCoord(), 0.75),
         #         segmentEnd.toSVGCoord()
-        #     ),
-        #     color,
-        #     completion,
+        #     )
         # )
 
-for x in range(NUM_X_CELLS):
-    dwg.add(dwg.line(Coord(x,0, None).toSVGCoord().tup(), Coord(x,NUM_Y_CELLS-1, None).toSVGCoord().tup(), stroke="black", stroke_width = 1))
-for y in range(NUM_Y_CELLS):
-    dwg.add(dwg.line(Coord(0,y, None).toSVGCoord().tup(), Coord(NUM_X_CELLS-1, y, None).toSVGCoord().tup(), stroke="black", stroke_width = 1))
+
+class MazeSketch(vsketch.SketchClass):
+    # Sketch parameters:
+    # radius = vsketch.Param(2.0)
+
+    def draw(self, vsk: vsketch.Vsketch) -> None:
+        vsk.size("a3", landscape=True)
+        # vsk.scale("mm")
 
 
-for path in paths:
-    color = randomColor()
-
-    for i, (segmentStart, segmentEnd) in enumerate(zip(path.points, path.points[1:])):
-        completion = 1.0 #(i / len(path.points))* 0.6 + 0.4
-
-        if globalLaneTracker.isHighestPathAtMid(segmentStart, segmentEnd):
-            SimpleDrawing.drawSegmentMid(segmentStart, segmentEnd, color, completion)
-    
-
-
-    for i, (prevPoint, point, nextPoint) in enumerate(zip([None] + path.points, path.points, path.points[1:]+[None])):
-        completion = 1.0# (i / len(path.points))* 0.6 + 0.4
-        if globalLaneTracker.isHighestPathAtEnd(point):
-            SimpleDrawing.drawSegment(prevPoint, point, nextPoint, color, completion)
-            text = svgwrite.text.Text(f"({i},{point.x},{point.y})", insert=(point.toSVGCoord().x, point.toSVGCoord().y),  fill = 'black')
-            text['font-size'] = '30%'
-            text['font-family'] = 'Courier New'
-            dwg.add(text)
-
-
-# drawRectStartEnd((20,20),(60,60))(stroke="black", stroke_width=1)
-
-# path = svgwrite.path.Path('m', stroke=color, fill="black")
-# path.push(Coord(0,NUM_Y_CELLS-2, None).toSVGCoord().tup())
-# path.push_arc(target=Coord(1,NUM_Y_CELLS-1, None).toSVGCoord().tup(), rotation=0, large_arc=False, r=CELL_WIDTH, absolute=True)
-# dwg.add(path)
-
-dwg.saveas("maze.svg", pretty=True)
+        paths = []
+        globalLaneTracker = GlobalLaneTracker()
         
-import ipdb
-ipdb.set_trace()
+        for i in range(NUM_PATHS):
+            path = MazePath()
+
+            for move_num in range(30):
+                possNewCoords = path.possNewCoords()
+                np.random.shuffle(possNewCoords)
+                possNewCoords.sort(key=globalLaneTracker.getHowManyLanesInUse)
+                newCoord = possNewCoords[0]
+
+                if (lane := globalLaneTracker.tryMoveHere(path.getLastCoord(), newCoord)) is not None:
+                    newCoord.lane = lane
+                    path.addPoint(newCoord)
+                else:
+                    print("Length of path is ", len(path.points))
+                    break
+
+            paths.append(path)
+
+        ### Drawing
+        
+        vsk.stroke(len(paths)+1)
+            
+        for i in range(NUM_X_CELLS):
+            lineStart = Coord(i, 0, 0).toSVGCoord()
+            lineEnd = Coord(i, NUM_Y_CELLS -1, 0).toSVGCoord()
+            vsk.line(lineStart.x, lineStart.y, lineEnd.x, lineEnd.y)
+                    
+        for i in range(NUM_Y_CELLS):
+            lineStart = Coord(0, i, 0).toSVGCoord()
+            lineEnd = Coord(NUM_X_CELLS-1, i, 0).toSVGCoord()
+            vsk.line(lineStart.x, lineStart.y, lineEnd.x, lineEnd.y)
+
+        for pathIndex, path in enumerate(paths):
+            color = None
+            vsk.penWidth("0.5mm",pathIndex+1)
+            vsk.stroke(pathIndex+1)
+
+            # for i, (segmentStart, segmentEnd) in enumerate(zip(path.points, path.points[1:])):
+            #     completion = 1.0 #(i / len(path.points))* 0.6 + 0.4
+            #     if globalLaneTracker.isHighestPathAtMid(segmentStart, segmentEnd):
+            #         SimpleDrawing.drawSegmentMid(vsk, segmentStart, segmentEnd, color, completion)
+            
+
+            for i, (prevPoint, point, nextPoint) in enumerate(zip([None] + path.points, path.points, path.points[1:]+[None])):
+                if globalLaneTracker.isHighestPathAtEnd(point):
+                    SimpleDrawing.drawSegment(vsk, prevPoint, point, nextPoint)
+                    # text = svgwrite.text.Text(f"({i},{point.x},{point.y})", insert=(point.toSVGCoord().x, point.toSVGCoord().y),  fill = 'black')
+                    # text['font-size'] = '30%'
+                    # text['font-family'] = 'Courier New'
+                    # dwg.add(text)
+
+    def finalize(self, vsk: vsketch.Vsketch) -> None:
+        vsk.vpype("linemerge linesimplify reloop linesort")
+
+
+if __name__ == "__main__":
+    MazeSketch.display(colorful=True, grid=True)
