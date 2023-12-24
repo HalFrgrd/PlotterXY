@@ -14,212 +14,155 @@ class ContoursSketch(vsketch.SketchClass):
     # Sketch parameters:
     # radius = vsketch.Param(2.0)
 
-    def drawContourLine(self, vsk, contourLine):
+    def drawContourLine(self, vsk, heightMask):
 
-        # sobel_x = ndimage.sobel(contourLine, 0, mode="constant", cval=0)
-        # sobel_y = ndimage.sobel(contourLine, 1, mode="constant", cval=0)
-        # roughMag = sobel_x**2 + sobel_y**2
-
-        # contourLine = np.array(
+        # heightMask = np.array(
         #     [
         #         [False,False,False,True,True,False,False],
         #         [False,False,False,True,True,False,False],
         #         [False,False,False,True,True,False,False],
         #         [False,False,True,True,True,True,False],
         #         [False,True ,True,True,True,True,False],
-        #         [False,False,False,True,True,True,False],
-        #         [False,False,True,True,True,False,False],
-        #         [False,False,False,False,False,False,False],
-        #         [False,False,False,False,False,False,False],
+        #         [False,False,False,True,False,False,False],
+        #         [False,False,True,False,True,False,False],
+        #         [False,True,True,False,True,True,False],
+        #         [False,True,True,False,True,True,False],
         #         [False,False,False,False,False,False,False],
         #     ]
         # )
 
-        width = contourLine.shape[1]
-        height = contourLine.shape[0]
+        # heightMask = np.array(
+        #     [
+        #         [False,False,False],
+        #         [False,True,False],
+        #         [False,False,False],
+  
+        #     ]
+        # )
 
-        # plt.subplot(221)
-        # plt.imshow(contourLine)
-        # plt.subplot(222)
-        # plt.imshow(sobel_x)
-        # plt.subplot(223)
-        # plt.imshow(sobel_y)
-        # plt.subplot(224)
-        # plt.imshow(roughMag)
-        # plt.show()
-
+        width = heightMask.shape[1]
+        height = heightMask.shape[0]
 
         #walk along the contour keeping them to the left
 
-        settingToPaths = {
+        settingToNewDir = {
             (0,1): {
-                ((False, True), (True, True)): (-1,0),
-                ((False, True), (False, True)): (0,1),
-                ((False, True), (False, False)): (1,0),
+                ((False, True), (True, True)): ((-1,0), (-1, 1)),
+                ((False, True), (False, True)): ((0,1), (0,1)),
+                ((False, True), (False, False)): ((1,0), (0,0)),
+                ((False, True), (True, False)): ((1,0), (0,0)),
             },
             (0,-1): {
-                ((True, True), (True, False)): (1,0),
-                ((True, False), (True, False)): (0,-1),
-                ((False, False), (True, False)): (-1,0),
+                ((True, True), (True, False)): ((1,0), (1,-1)),
+                ((True, False), (True, False)): ((0,-1), (0,-1)),
+                ((False, False), (True, False)): ((-1,0), (0,0)),
+                ((False, True), (True, False)): ((-1,0), (0,0)),
             },
             (1,0): {
-                ((True, True), (False, True)): (0,1),
-                ((True, True), (False, False)): (1,0),
-                ((True, False), (False, False)): (0,-1),
+                ((True, True), (False, True)): ((0,1), (1,1)),
+                ((True, True), (False, False)): ((1,0), (1,0)),
+                ((True, False), (False, False)): ((0,-1), (0,0)),
+                ((True, False), (False, True)): ((0,-1), (0,0)),
             },
             (-1,0): {
-                ((True, False), (True, True)): (0,-1),
-                ((False, False), (True, True)): (-1,0),
-                ((False, False), (False, True)): (0, 1),
+                ((True, False), (True, True)): ((0,-1), (-1,-1)),
+                ((False, False), (True, True)): ((-1,0), (-1,0)),
+                ((False, False), (False, True)): ((0, 1), (0,0)),
+                ((True, False), (False, True)): ((0,1), (0,0)),
             },
         }
 
-        # ipdb.set_trace()
-        a,b=np.nonzero(contourLine)
-        coordsAboveHeight = set(zip(b,a))
 
-        coordsNearLine = set()
+        def getNeighbourhoodCoords(x,y,dir):
+            if dir == (0,1):
+                return ((x-1, y), (x,y), (x-1,y+1), (x, y+1))
+            if dir == (0,-1):
+                return ((x,y-1), (x+1,y-1), (x,y), (x+1,y))
+            if dir == (1,0):
+                return ((x,y), (x+1,y), (x, y+1), (x+1,y+1))
+            if dir == (-1,0):
+                return ((x-1,y-1), (x, y-1), (x-1,y), (x,y))
+            assert False
 
-        # for x,y in coordsAboveHeight:
-        #     for dx in [0,1]:
-        #         for dy in [0,1]:
-        #             a = x+dx
-        #             b = y+dy
-        #             if (0<=a<width) and (0<=b<height) and not contourLine[b,a]:
-        #                 coordsNearLine.add((x,y))
-        
-        for x in range(width):
-            for y in range(height):
-                neighborhood = contourLine[y:y+2,x:x+2]
-                if np.any(neighborhood) and not np.all(neighborhood):
-                    coordsNearLine.add((x,y))
 
-        # for i in range(height):
-        #     for j in range(width):
-        #         if contourLine[i,j]:
-        #             vsk.circle(j,i, radius=0.5)
-        #         if (j,i) in coordsNearLine:
-        #             vsk.circle(j,i, radius=0.1)
-
-        def getSetting(x,y):
-            return ((contourLine[y,x],contourLine[y,x+1]), (contourLine[y+1,x],contourLine[y+1,x+1]))
+        def getSetting(x,y, dir):
+            neighborhoodCoords = getNeighbourhoodCoords(x,y,dir)
+            if not all((0<=x_< width) and (0<=y_ < height) for (x_,y_) in neighborhoodCoords):
+                return None
+            (x0,y0), (x1,y1), (x2,y2), (x3,y3) = neighborhoodCoords
+            return ((heightMask[y0,x0],heightMask[y1,x1]), (heightMask[y2,x2],heightMask[y3,x3]))
         
         def getPointToPlotFromDir(x,y,dir):
             return x+.5, y+.5
-            # if dir == (0,1):
-            #     return x+.5,y+.5
-            # if dir == (0,-1):
-            #     return x+.5,y+.5
-            # if dir == (1,0):
-            #     return x+.5,y+.5
-            # if dir == (-1,0):
-            #     return x+.5,y+.5
-            assert False
+        
+        dirs = ((0,1), (0,-1), (1,0), (-1,0))
+
+        # consider all 2x2 areas that cross the boundary
+        coordsNearLineAndDir = set()
+        for x in range(width):
+            for y in range(height):
+                for dir in dirs:
+                    setting = getSetting(x,y,dir)
+                    if setting is not None and setting in settingToNewDir[dir]:
+                        coordsNearLineAndDir.add((x,y, dir))
+
+        # for i in range(height):
+        #     for j in range(width):
+        #         if heightMask[i,j]:
+        #             vsk.circle(j,i, radius=0.2)
+        #         if (j,i, dirs[0]) in coordsNearLineAndDir:
+        #             vsk.circle(j,i, radius=0.01)
+
+        # coordsAndDirVisited = set()
         # ipdb.set_trace()
-
-        coordsVisited = set()
         paths = []
-        while (remaining := coordsNearLine - coordsVisited):
-            x,y = remaining.pop()
-            # if x == 2 and y == 4:
-            #     ipdb.set_trace()
-            
+        while coordsNearLineAndDir:
+            x, y, dir = coordsNearLineAndDir.pop()
             path = []
-            coordsNearLine.remove((x,y))
 
-
-            if not( 0<= x and x + 1 < width and 0 <= y and y+1 < height):
-                continue
-            
-            setting = getSetting(x,y)
-
-            for dir_, dirSettings in settingToPaths.items():
-                if setting in dirSettings:
-                    dir = dir_
-                    break
-            else:
-                continue
-            
             while True:
-                if not( 0<= x and x + 1 < width and 0 <= y and y+1 < height):
+                path.append((x,y))
+   
+                setting = getSetting(x,y, dir)
+                if setting is None:
                     break
-                setting = getSetting(x,y)
-                try:
-                    dir = settingToPaths[dir][setting]
-                except KeyError:
-                    # ipdb.set_trace()
-                    break
-                
-                coordsVisited.add((x,y))
-            
-                newX = x + dir[0]
-                newY = y + dir[1]
-                path.append(getPointToPlotFromDir(x,y, dir))
+                newDir, transition = settingToNewDir[dir][setting]
 
+                newX = x + transition[0]
+                newY = y + transition[1]
                 x,y = newX, newY
-
-                if (x,y) in coordsVisited:
-                    path.append(getPointToPlotFromDir(x,y, dir))
-
+                dir = newDir
+                if (x,y, dir) not in coordsNearLineAndDir:
+                    path.append((x,y))
                     break
-            
+                coordsNearLineAndDir.remove((x,y,dir))
+
             print(len(path))
-            # if len(path) == 5:
-            #     ipdb.set_trace()
+            if len(path):
+                paths.append(path)
 
-            # for (x,y), (x2,y2) in path:
-            #     vsk.line(x,y,x2,y2)
-            paths.append(path)
-
-        while True:
-            found = False
+        # merge paths
+        def findTwoPaths(paths):
             for i1, p1 in enumerate(paths):
                 for i2, p2 in enumerate(paths):
                     endP1 = p1[-1]
                     startP2 = p2[0]
                     if i1 != i2 and endP1 == startP2:
-                        found = True
-                        break
-                if found:
-                    break
-            if found:
-                paths[i1] = p1 + p2[1:]
-                del paths[i2]
-            else:
-                break
+                        return i1, i2
+            return None
 
-                
+        while res := findTwoPaths(paths):
+            i1, i2 = res
+            paths[i1] = paths[i1] + paths[i2][1:]
+            del paths[i2]
 
+        # draw paths
         for i, path in enumerate(paths):
             vsk.stroke(i+1)
-            # for (a,b), (c,d) in path:
-            #     vsk.line(a,b,c,d)
-            # if (2,4) in [p1 for p1,p2 in path]:
-            #     ipdb.set_trace()
-            vsk.polygon([p1 for p1 in path])
+            vsk.polygon(path)
 
 
 
-
-
-
-        # for x in range(contourLine.shape[0]):
-        #     for y in range(contourLine.shape[1]):
-        #         if contourLine[x,y]:
-
-        #             # if (x-1,y-1) in 
-
-        #             if y+1 < contourLine.shape[1] and contourLine[x,y+1]:
-        #                 vsk.line(x,y,x,y+1)
-                    
-        #             if x+1 < contourLine.shape[0] and contourLine[x+1,y]:
-        #                 vsk.line(x,y,x+1,y)
-                    
-        #             if y+1 < contourLine.shape[1] and x+1 < contourLine.shape[0] and contourLine[x+1,y+1]:
-        #                 vsk.line(x,y,x+1,y+1)
-                    
-        #             if y-1 > 0 and x+1 < contourLine.shape[0] and contourLine[x+1,y-1]:
-        #                 vsk.line(x,y,x+1,y-1)
 
     def draw(self, vsk: vsketch.Vsketch) -> None:
         vsk.size("a3", landscape=True)

@@ -73,51 +73,21 @@ class TerrainTiles(object):
                 self.download_tile(tile)
 
 
-def calcContourLines(h):
-    # ipdb.set_trace()
-
-    minH = h.min()
-    maxH = h.max()
+def calcContourLines(heightMap):
+    minH = heightMap.min()
+    maxH = heightMap.max()
     numContours = 20
     contourH = (maxH-minH)// numContours
     LOG.info(f"{maxH=} {minH=} {contourH=}")
     assert contourH > 4
 
-    # onACont = None
     contourBitMaps = []
     for cont in range(numContours):
         contH = minH + contourH*cont
-
-        # atHXLeftToRight = (h[:-1,:-1] < contH) & (h[1:,:-1] >= contH)
-        # atHXRightToLeft = (h[:-1,:-1] >= contH) & (h[1:,:-1] < contH)
-        # atHYTopToBottom = (h[:-1,:-1] < contH) & (h[:-1,1:] >= contH)
-        # atHYBottomToTop = (h[:-1,:-1] >= contH) & (h[:-1,1:] < contH)
-        # atHTopLeftToBottomRight = (h[:-1,:-1] < contH) & (h[1:,1:] >= contH)
-        # atHBottomRightToTopLeft = (h[:-1,:-1] >= contH) & (h[1:,1:] < contH)
-        # atHTopRightToBottomLeft = (h[1:,:-1] < contH) & (h[1:,:-1] >= contH)
-        # atHBottomLeftToTopRight = (h[1:,:-1] >= contH) & (h[1:,:-1] < contH)
-        # atH = atHXLeftToRight | atHXRightToLeft | atHYTopToBottom | atHYBottomToTop | atHTopLeftToBottomRight | atHBottomRightToTopLeft | atHTopRightToBottomLeft | atHBottomLeftToTopRight
-        
-        # for i in range(h.shape[0]-2):
-        #     for j in range(h.shape[1]-2):
-        #         if atH[i,j] and atH[i+1,j+1] and not atH[i+1,j] and not atH[i,j+1]:
-        #             atH[i+1,j] = True
-        #         elif not atH[i,j] and not atH[i+1,j+1] and atH[i+1,j] and atH[i,j+1]:
-        #             atH[i,j] = True
-        atH = h >= contH
-        contourBitMaps.append(atH)
-        # if onACont is None:
-        #     onACont = atH
+        heigherThanContH = heightMap >= contH
+        contourBitMaps.append(heigherThanContH)
     
-
-    #     onACont |= atH
     return contourBitMaps
-
-    # plt.subplot(121)
-    # plt.imshow(onACont)
-    # plt.subplot(122)
-    # plt.imshow(h, cmap="terrain")
-    # plt.show()
 
 
 if __name__ == "__main__":
