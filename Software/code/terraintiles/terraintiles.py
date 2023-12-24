@@ -6,6 +6,9 @@ import rasterio.features
 from rasterio.warp import transform_bounds
 import requests
 from matplotlib import pyplot as plt
+import numpy as np
+import ipdb
+
 
 LOG = logging.getLogger(__name__)
 
@@ -70,41 +73,53 @@ class TerrainTiles(object):
                 self.download_tile(tile)
 
 
-import numpy as np
-def contours(h):
-    ipdb.set_trace()
+def calcContourLines(h):
+    # ipdb.set_trace()
 
     minH = h.min()
     maxH = h.max()
     numContours = 20
-    contourH = (maxH-minH)// 20
+    contourH = (maxH-minH)// numContours
     LOG.info(f"{maxH=} {minH=} {contourH=}")
     assert contourH > 4
 
-    onACont = None
-    for cont in range(20):
+    # onACont = None
+    contourBitMaps = []
+    for cont in range(numContours):
         contH = minH + contourH*cont
 
-        # TODO what about diagonal gradients?
-        atHXLeftToRight = (h[:-1,:-1] < contH) & (h[1:,:-1] >= contH)
-        atHXRightToLeft = (h[:-1,:-1] >= contH) & (h[1:,:-1] < contH)
-        atHYTopToBottom = (h[:-1,:-1] < contH) & (h[:-1,1:] >= contH)
-        atHYBottomToTop = (h[:-1,:-1] >= contH) & (h[:-1,1:] < contH)
-        atH = atHXLeftToRight | atHXRightToLeft | atHYTopToBottom | atHYBottomToTop
-
-        if onACont is None:
-            onACont = atH
+        # atHXLeftToRight = (h[:-1,:-1] < contH) & (h[1:,:-1] >= contH)
+        # atHXRightToLeft = (h[:-1,:-1] >= contH) & (h[1:,:-1] < contH)
+        # atHYTopToBottom = (h[:-1,:-1] < contH) & (h[:-1,1:] >= contH)
+        # atHYBottomToTop = (h[:-1,:-1] >= contH) & (h[:-1,1:] < contH)
+        # atHTopLeftToBottomRight = (h[:-1,:-1] < contH) & (h[1:,1:] >= contH)
+        # atHBottomRightToTopLeft = (h[:-1,:-1] >= contH) & (h[1:,1:] < contH)
+        # atHTopRightToBottomLeft = (h[1:,:-1] < contH) & (h[1:,:-1] >= contH)
+        # atHBottomLeftToTopRight = (h[1:,:-1] >= contH) & (h[1:,:-1] < contH)
+        # atH = atHXLeftToRight | atHXRightToLeft | atHYTopToBottom | atHYBottomToTop | atHTopLeftToBottomRight | atHBottomRightToTopLeft | atHTopRightToBottomLeft | atHBottomLeftToTopRight
         
-        onACont |= atH
+        # for i in range(h.shape[0]-2):
+        #     for j in range(h.shape[1]-2):
+        #         if atH[i,j] and atH[i+1,j+1] and not atH[i+1,j] and not atH[i,j+1]:
+        #             atH[i+1,j] = True
+        #         elif not atH[i,j] and not atH[i+1,j+1] and atH[i+1,j] and atH[i,j+1]:
+        #             atH[i,j] = True
+        atH = h >= contH
+        contourBitMaps.append(atH)
+        # if onACont is None:
+        #     onACont = atH
+    
 
-    plt.subplot(121)
-    plt.imshow(onACont)
-    plt.subplot(122)
-    plt.imshow(h, cmap="terrain")
-    plt.show()
+    #     onACont |= atH
+    return contourBitMaps
+
+    # plt.subplot(121)
+    # plt.imshow(onACont)
+    # plt.subplot(122)
+    # plt.imshow(h, cmap="terrain")
+    # plt.show()
 
 
-import ipdb
 if __name__ == "__main__":
     bounds =[-125.2714, 51.3706, -125.2547, 51.3768]
     zoom = 11
@@ -117,18 +132,18 @@ if __name__ == "__main__":
 
         # plt.imshow(dataset.read(1), cmap="terrain")
         # plt.show()
-        contours(dataset.read(1))
+        calcContourLines(dataset.read(1))
 
         # Read the dataset's valid data mask as a ndarray.
         mask = dataset.dataset_mask()
 
-        # Extract feature shapes and values from the array.
-        for geom, val in rasterio.features.shapes(mask, transform=dataset.transform):
+        # # Extract feature shapes and values from the array.
+        # for geom, val in rasterio.features.shapes(mask, transform=dataset.transform):
 
-            # Transform shapes from the dataset's own coordinate
-            # reference system to CRS84 (EPSG:4326).
-            geom = rasterio.warp.transform_geom(
-                dataset.crs, 'EPSG:4326', geom, precision=6)
+        #     # Transform shapes from the dataset's own coordinate
+        #     # reference system to CRS84 (EPSG:4326).
+        #     geom = rasterio.warp.transform_geom(
+        #         dataset.crs, 'EPSG:4326', geom, precision=6)
 
-            # Print GeoJSON shapes to stdout.
-            print(geom)
+        #     # Print GeoJSON shapes to stdout.
+        #     print(geom)
