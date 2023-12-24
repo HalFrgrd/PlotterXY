@@ -10,11 +10,18 @@ from matplotlib import pyplot as plt
 import numpy as np
 from copy import copy
 
+import time
+
+timerA = 0.0
+timerB = 0.0
+timerC = 0.0
+
 class ContoursSketch(vsketch.SketchClass):
     # Sketch parameters:
     # radius = vsketch.Param(2.0)
 
     def drawContourLine(self, vsk, heightMask):
+        global timerA, timerB, timerC
 
         # heightMask = np.array(
         #     [
@@ -45,6 +52,7 @@ class ContoursSketch(vsketch.SketchClass):
 
         #walk along the contour keeping them to the left
 
+
         settingToNewDir = {
             (0,1): {
                 ((False, True), (True, True)): ((-1,0), (-1, 1)),
@@ -74,6 +82,9 @@ class ContoursSketch(vsketch.SketchClass):
 
 
         def getNeighbourhoodCoords(x,y,dir):
+            """
+            if you are in the middle of setting facing dir, back left will be True, back right will be False
+            """
             if dir == (0,1):
                 return ((x-1, y), (x,y), (x-1,y+1), (x, y+1))
             if dir == (0,-1):
@@ -91,20 +102,21 @@ class ContoursSketch(vsketch.SketchClass):
                 return None
             (x0,y0), (x1,y1), (x2,y2), (x3,y3) = neighborhoodCoords
             return ((heightMask[y0,x0],heightMask[y1,x1]), (heightMask[y2,x2],heightMask[y3,x3]))
-        
-        def getPointToPlotFromDir(x,y,dir):
-            return x+.5, y+.5
-        
         dirs = ((0,1), (0,-1), (1,0), (-1,0))
 
-        # consider all 2x2 areas that cross the boundary
-        coordsNearLineAndDir = set()
-        for x in range(width):
-            for y in range(height):
-                for dir in dirs:
-                    setting = getSetting(x,y,dir)
-                    if setting is not None and setting in settingToNewDir[dir]:
-                        coordsNearLineAndDir.add((x,y, dir))
+        start = time.time()
+        # find 2x2 ares of interest
+        coordsNearLineAndDir = {}
+        for y,x in zip(*np.nonzero(heightMask)):
+            directNeighbours = heightMask[max(y-1,0):min(y+1,height), max(x-1,0):min(x+1,width)]
+            if np.all(directNeighbours) or not np.any(directNeighbours):
+                continue
+            for dir in dirs:
+                setting = getSetting(x,y,dir)
+                if setting is not None and setting in settingToNewDir[dir]:
+                    coordsNearLineAndDir[(x,y, dir)] = setting
+        timerA += time.time() - start
+        start = time.time()
 
         # for i in range(height):
         #     for j in range(width):
@@ -113,33 +125,28 @@ class ContoursSketch(vsketch.SketchClass):
         #         if (j,i, dirs[0]) in coordsNearLineAndDir:
         #             vsk.circle(j,i, radius=0.01)
 
-        # coordsAndDirVisited = set()
         # ipdb.set_trace()
         paths = []
         while coordsNearLineAndDir:
-            x, y, dir = coordsNearLineAndDir.pop()
+            (x, y, dir), setting = coordsNearLineAndDir.popitem()
             path = []
-
             while True:
                 path.append((x,y))
    
-                setting = getSetting(x,y, dir)
-                if setting is None:
-                    break
-                newDir, transition = settingToNewDir[dir][setting]
+                dir, transition = settingToNewDir[dir][setting]
+                x += transition[0]
+                y += transition[1]
 
-                newX = x + transition[0]
-                newY = y + transition[1]
-                x,y = newX, newY
-                dir = newDir
                 if (x,y, dir) not in coordsNearLineAndDir:
                     path.append((x,y))
                     break
-                coordsNearLineAndDir.remove((x,y,dir))
+                setting = coordsNearLineAndDir.pop((x,y,dir))
 
             print(len(path))
-            if len(path):
-                paths.append(path)
+            paths.append(path)
+
+        timerB += time.time() - start
+        start = time.time()
 
         # merge paths
         def findTwoPaths(paths):
@@ -160,7 +167,7 @@ class ContoursSketch(vsketch.SketchClass):
         for i, path in enumerate(paths):
             vsk.stroke(i+1)
             vsk.polygon(path)
-
+        timerC += time.time() - start
 
 
 
@@ -173,7 +180,11 @@ class ContoursSketch(vsketch.SketchClass):
             contourLines = calcContourLines(tileDataset.read(1))
         
         for contourLine in contourLines:
-            self.drawContourLine(vsk, contourLine[:, :])
+            self.drawContourLine(vsk, contourLine[:250, :250])
+        
+        print(f"{timerA=}")
+        print(f"{timerB=}")
+        print(f"{timerC=}")
 
         # implement your sketch here
         # vsk.circle(0, 0, self.radius, mode="radius")
