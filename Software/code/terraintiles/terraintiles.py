@@ -31,6 +31,8 @@ class TerrainTiles(object):
 
         self.cache_dir = CACHE_DIR
         self.zoom = zoom
+        assert bounds[0] < bounds[2]
+        assert bounds[1] < bounds[3]
         self.bounds = bounds
         if bounds_crs != "EPSG:4326":
             self.bounds_ll = transform_bounds(bounds_crs, "EPSG:4326", *bounds)
@@ -40,6 +42,7 @@ class TerrainTiles(object):
 
         self.url = "https://s3.amazonaws.com/elevation-tiles-prod/geotiff/"
         self.tiles = [t for t in mercantile.tiles(*self.bounds_ll, self.zoom)]
+        print("Num tiles =", len(self.tiles))
         self.files = []
         self.dst_crs = dst_crs
         self.cache()
@@ -67,9 +70,10 @@ class TerrainTiles(object):
             tilepath = "/".join([str(tile.z), str(tile.x), str(tile.y) + ".tif"])
             cachepath = Path(self.cache_dir).joinpath(tilepath)
             if cachepath.exists():
-                LOG.debug(f"Found tile {tilepath} in cache")
+                print(f"Found tile {tilepath} in cache")
                 self.files.append(str(cachepath))
             else:
+                print(f"Downloading {tile=}")
                 self.download_tile(tile)
 
 
@@ -91,11 +95,9 @@ def calcContourLines(heightMap):
 
 
 if __name__ == "__main__":
-    bounds =[-125.2714, 51.3706, -125.2547, 51.3768]
-    zoom = 11
     tt = TerrainTiles(
-        bounds,
-        zoom,
+        bounds=[45.053894,5.602368, 45.270794,5.885266],
+        zoom=10,
     )
 
     with rasterio.open('terraintile_cache/11/311/682.tif') as dataset:

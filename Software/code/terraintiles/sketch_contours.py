@@ -25,15 +25,15 @@ class ContoursSketch(vsketch.SketchClass):
 
         # heightMask = np.array(
         #     [
-        #         [False,False,False,True,True,False,False],
-        #         [False,False,False,True,True,False,False],
+        #         [False,False,False,False,False,False,False],
+        #         [False,False,False,False,True,False,False],
         #         [False,False,False,True,True,False,False],
         #         [False,False,True,True,True,True,False],
         #         [False,True ,True,True,True,True,False],
-        #         [False,False,False,True,False,False,False],
-        #         [False,False,True,False,True,False,False],
-        #         [False,True,True,False,True,True,False],
-        #         [False,True,True,False,True,True,False],
+        #         [False,False,True,True,False,False,False],
+        #         [False,True,True,False,False,False,False],
+        #         [False,True,True,False,False,False,False],
+        #         [False,True,True,False,False,False,False],
         #         [False,False,False,False,False,False,False],
         #     ]
         # )
@@ -50,8 +50,8 @@ class ContoursSketch(vsketch.SketchClass):
         width = heightMask.shape[1]
         height = heightMask.shape[0]
 
-        #walk along the contour keeping them to the left
-
+        # walk along the contour keeping them to the left
+        # this is the first part of Potrace
 
         settingToNewDir = {
             (0,1): {
@@ -108,9 +108,6 @@ class ContoursSketch(vsketch.SketchClass):
         # find 2x2 ares of interest
         coordsNearLineAndDir = {}
         for y,x in zip(*np.nonzero(heightMask)):
-            directNeighbours = heightMask[max(y-1,0):min(y+1,height), max(x-1,0):min(x+1,width)]
-            if np.all(directNeighbours) or not np.any(directNeighbours):
-                continue
             for dir in dirs:
                 setting = getSetting(x,y,dir)
                 if setting is not None and setting in settingToNewDir[dir]:
@@ -127,15 +124,18 @@ class ContoursSketch(vsketch.SketchClass):
 
         # ipdb.set_trace()
         paths = []
+        import random
         while coordsNearLineAndDir:
-            (x, y, dir), setting = coordsNearLineAndDir.popitem()
+            # random choice is better than popitem, much longer paths
+            (x, y, dir)  = random.choice(list(coordsNearLineAndDir.keys()))
+            setting = coordsNearLineAndDir.pop((x,y,dir))
             path = []
             while True:
                 path.append((x,y))
    
-                dir, transition = settingToNewDir[dir][setting]
-                x += transition[0]
-                y += transition[1]
+                dir, (dx, dy) = settingToNewDir[dir][setting]
+                x += dx
+                y += dy
 
                 if (x,y, dir) not in coordsNearLineAndDir:
                     path.append((x,y))
@@ -144,6 +144,8 @@ class ContoursSketch(vsketch.SketchClass):
 
             print(len(path))
             paths.append(path)
+            # vsk.stroke(len(paths)+1)
+            # vsk.polygon(path)
 
         timerB += time.time() - start
         start = time.time()
@@ -157,16 +159,38 @@ class ContoursSketch(vsketch.SketchClass):
                     if i1 != i2 and endP1 == startP2:
                         return i1, i2
             return None
-
+        originalNumPaths = len(paths)
         while res := findTwoPaths(paths):
             i1, i2 = res
             paths[i1] = paths[i1] + paths[i2][1:]
             del paths[i2]
+        print(f"{originalNumPaths=} {len(paths)=}")
+
+        def drawSmoothedPath(path):
+            windowWidth = 5
+            smoothedPath = []
+            # assert len(path) > windowWidth
+            # if len(path) < window
+            # ipdb.set_trace()
+            # originalNumPoints = len(path)
+            
+            path = np.array([path[0]] * (windowWidth-1) + path + [path[-1]] * (windowWidth-1))
+            slidingWindow = np.lib.stride_tricks.sliding_window_view(path, windowWidth, axis=0)
+            scale = 0.5
+            for window in slidingWindow:
+                p = window.mean(axis=1) * scale
+                smoothedPath.append(p)
+            
+            vsk.polygon(smoothedPath)
 
         # draw paths
         for i, path in enumerate(paths):
             vsk.stroke(i+1)
-            vsk.polygon(path)
+            # vsk.polygon(path)
+            vsk.stroke(i+2)
+            drawSmoothedPath(path)
+            # corner = 0.5
+
         timerC += time.time() - start
 
 
@@ -176,11 +200,11 @@ class ContoursSketch(vsketch.SketchClass):
         vsk.scale("mm")
 
 
-        with rasterio.open('terraintile_cache/11/311/682.tif') as tileDataset:
+        with rasterio.open('terraintile_cache/10/640/495.tif') as tileDataset:
             contourLines = calcContourLines(tileDataset.read(1))
         
-        for contourLine in contourLines:
-            self.drawContourLine(vsk, contourLine[:250, :250])
+        for contourLine in contourLines[0:]:
+            self.drawContourLine(vsk, contourLine[:500,:500])
         
         print(f"{timerA=}")
         print(f"{timerB=}")

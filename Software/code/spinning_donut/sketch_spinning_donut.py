@@ -2,13 +2,11 @@ import vsketch
 
 import numpy as np
 
-screen_size = 40
+screen_size = 140
 theta_spacing = 0.07
 phi_spacing = 0.02
 illumination = np.fromiter(".,-~:;=!*#$@", dtype="<U1")
 illumination2 = np.arange(len(illumination))
-
-
 
 
 class SpinningDonutSketch(vsketch.SketchClass):
@@ -69,7 +67,7 @@ class SpinningDonutSketch(vsketch.SketchClass):
         frame = self.render_frame(A, B)
 
         def frameToSVG(i):
-            return i * 2.8
+            return i * 2.2
 
         for i in range(frame.shape[0]):
             for j in range(frame.shape[1]):
@@ -86,12 +84,14 @@ class SpinningDonutSketch(vsketch.SketchClass):
 
 
 
-        for startX in np.linspace(0, 120, num=2):
-            for startY in np.linspace(0,220, num=3):
-                frameNum = vsk.random(0,1000)
-                A = 1+ theta_spacing * frameNum
-                B = 1+ phi_spacing * frameNum
-                self.drawFrame(vsk, A,B, startX, startY)
+        # for startX in np.linspace(0, 120, num=2):
+        #     for startY in np.linspace(0,220, num=3):
+        startX = 0
+        startY = 0
+        frameNum = vsk.random(0,1000)
+        A = 1+ theta_spacing * frameNum
+        B = 1+ phi_spacing * frameNum
+        self.drawFrame(vsk, A,B, startX, startY)
 
     def finalize(self, vsk: vsketch.Vsketch) -> None:
         vsk.vpype("linemerge linesimplify reloop linesort")
