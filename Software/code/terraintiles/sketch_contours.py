@@ -96,22 +96,40 @@ class ContoursSketch(vsketch.SketchClass):
             assert False
 
 
-        def getSetting(x,y, dir):
-            neighborhoodCoords = getNeighbourhoodCoords(x,y,dir)
-            if not all((0<=x_< width) and (0<=y_ < height) for (x_,y_) in neighborhoodCoords):
-                return None
-            (x0,y0), (x1,y1), (x2,y2), (x3,y3) = neighborhoodCoords
-            return ((heightMask[y0,x0],heightMask[y1,x1]), (heightMask[y2,x2],heightMask[y3,x3]))
-        dirs = ((0,1), (0,-1), (1,0), (-1,0))
-
         start = time.time()
-        # find 2x2 ares of interest
+        # find 2x2 areas of interest
         coordsNearLineAndDir = {}
-        for y,x in zip(*np.nonzero(heightMask)):
-            for dir in dirs:
-                setting = getSetting(x,y,dir)
-                if setting is not None and setting in settingToNewDir[dir]:
+        
+        # get 2x2 views sliding over heightMask, copy to get better lookup speed
+        settings = np.lib.stride_tricks.sliding_window_view(heightMask, (2,2)).copy()
+        assert settings.flags.c_contiguous
+        
+        # convert the 2x2 bools into int32's
+        settingsAsInt = settings.reshape((settings.shape[0],settings.shape[1]*4))
+        settingsAsInt = settingsAsInt.view(np.int32)
+
+        for dir in settingToNewDir.keys():
+            for setting in settingToNewDir[dir].keys():
+                # convert this setting to an int32
+                settingAsInt = np.array(setting, dtype=bool).reshape(-1).view(np.int32)[0]
+                matches = settingsAsInt == settingAsInt
+                yMatches, xMatches = np.nonzero(matches)
+
+                # change match coordinates by +/- 1 depending on dir
+                # xMatches, yMatches will be for the top left, so we need to adjust
+                if dir == (0,1):
+                    xMatches += 1
+                elif dir == (0,-1):
+                    yMatches += 1
+                elif dir == (1,0):
+                    pass
+                elif dir == (-1,0):
+                    xMatches += 1
+                    yMatches += 1
+
+                for x,y in zip(xMatches, yMatches):
                     coordsNearLineAndDir[(x,y, dir)] = setting
+
         timerA += time.time() - start
         start = time.time()
 
@@ -142,22 +160,23 @@ class ContoursSketch(vsketch.SketchClass):
                     break
                 setting = coordsNearLineAndDir.pop((x,y,dir))
 
-            print(len(path))
+            # print(len(path))
             paths.append(path)
             # vsk.stroke(len(paths)+1)
             # vsk.polygon(path)
 
         timerB += time.time() - start
-        start = time.time()
 
         # merge paths
         def findTwoPaths(paths):
+            startCoordToPathIndex = {}
             for i1, p1 in enumerate(paths):
-                for i2, p2 in enumerate(paths):
-                    endP1 = p1[-1]
-                    startP2 = p2[0]
-                    if i1 != i2 and endP1 == startP2:
-                        return i1, i2
+                # if p1[0] in startCoordToPathIndex:
+                #     ipdb.set_trace()
+                p1EndCoord = p1[-1]
+                if p1EndCoord in startCoordToPathIndex:
+                    return i1, startCoordToPathIndex[p1EndCoord]
+                startCoordToPathIndex[p1[0]] = i1
             return None
         originalNumPaths = len(paths)
         while res := findTwoPaths(paths):
@@ -166,45 +185,54 @@ class ContoursSketch(vsketch.SketchClass):
             del paths[i2]
         print(f"{originalNumPaths=} {len(paths)=}")
 
-        def drawSmoothedPath(path):
-            windowWidth = 5
-            smoothedPath = []
-            # assert len(path) > windowWidth
-            # if len(path) < window
-            # ipdb.set_trace()
-            # originalNumPoints = len(path)
-            
-            path = np.array([path[0]] * (windowWidth-1) + path + [path[-1]] * (windowWidth-1))
-            slidingWindow = np.lib.stride_tricks.sliding_window_view(path, windowWidth, axis=0)
-            scale = 0.5
-            for window in slidingWindow:
-                p = window.mean(axis=1) * scale
-                smoothedPath.append(p)
-            
-            vsk.polygon(smoothedPath)
+        start = time.time()
+
 
         # draw paths
         for i, path in enumerate(paths):
             vsk.stroke(i+1)
             # vsk.polygon(path)
             vsk.stroke(i+2)
-            drawSmoothedPath(path)
+            self.drawSmoothedPath(vsk, path)
             # corner = 0.5
 
         timerC += time.time() - start
 
-
+    def drawSmoothedPath(self,vsk, path):
+        windowWidth = 5
+        smoothedPath = []
+        # assert len(path) > windowWidth
+        # if len(path) < window
+        # ipdb.set_trace()
+        # originalNumPoints = len(path)
+        
+        path = np.array([path[0]] * (windowWidth-1) + path + [path[-1]] * (windowWidth-1))
+        slidingWindow = np.lib.stride_tricks.sliding_window_view(path, windowWidth, axis=0)
+        for window in slidingWindow:
+            p = window.mean(axis=1) * self.scale
+            smoothedPath.append(p)
+        
+        vsk.polygon(smoothedPath)
 
     def draw(self, vsk: vsketch.Vsketch) -> None:
         vsk.size("a3", landscape=True)
         vsk.scale("mm")
 
+        tt = TerrainTiles(
+            # bounds=[5.567466,  44.920668, 6.059677,45.321544],
+            # bounds=[3.474233, 43.409836, 8.729127, 46.578498],
+            bounds = [-12.036425, 49.627792 ,2.918008, 60.814924],
+            zoom=8,
+        )
 
-        with rasterio.open('terraintile_cache/10/640/495.tif') as tileDataset:
-            contourLines = calcContourLines(tileDataset.read(1))
+        maxDim = 2000
+        self.scale = 270/maxDim
+        heights = tt.getCombinedTileDatasets(maxDimension=maxDim)
+
+        contourLines = calcContourLines(heights)
         
-        for contourLine in contourLines[0:]:
-            self.drawContourLine(vsk, contourLine[:500,:500])
+        for contourLine in contourLines[:]:
+            self.drawContourLine(vsk, contourLine[:, :])
         
         print(f"{timerA=}")
         print(f"{timerB=}")

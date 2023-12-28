@@ -20,7 +20,7 @@ class FillTestSketch(vsketch.SketchClass):
         # vsk.fill(2)
         vsk.arc(0,0,50,50,0,180,degrees=True, close="chord")
         # vsk.noFill()
-        vsk.arc(0,0,40,30,90,270,degrees=True, close="chord")
+        vsk.arc(0,0,40,3000,90,270,degrees=True, close="chord")
         
         vsk.vpype("occult")
 
