@@ -20,7 +20,7 @@ class ContoursSketch(vsketch.SketchClass):
     # Sketch parameters:
     # radius = vsketch.Param(2.0)
 
-    def drawContourLine(self, vsk, heightMask):
+    def drawContourLine(self, vsk, contourHeight, heightMask):
         global timerA, timerB, timerC
 
         # heightMask = np.array(
@@ -46,9 +46,6 @@ class ContoursSketch(vsketch.SketchClass):
   
         #     ]
         # )
-
-        width = heightMask.shape[1]
-        height = heightMask.shape[0]
 
         # walk along the contour keeping them to the left
         # this is the first part of Potrace
@@ -81,20 +78,9 @@ class ContoursSketch(vsketch.SketchClass):
         }
 
 
-        def getNeighbourhoodCoords(x,y,dir):
-            """
-            if you are in the middle of setting facing dir, back left will be True, back right will be False
-            """
-            if dir == (0,1):
-                return ((x-1, y), (x,y), (x-1,y+1), (x, y+1))
-            if dir == (0,-1):
-                return ((x,y-1), (x+1,y-1), (x,y), (x+1,y))
-            if dir == (1,0):
-                return ((x,y), (x+1,y), (x, y+1), (x+1,y+1))
-            if dir == (-1,0):
-                return ((x-1,y-1), (x, y-1), (x-1,y), (x,y))
-            assert False
-
+        """
+        if you are in the middle of setting facing dir, back left will be True, back right will be False
+        """
 
         start = time.time()
         # find 2x2 areas of interest
@@ -178,6 +164,7 @@ class ContoursSketch(vsketch.SketchClass):
                     return i1, startCoordToPathIndex[p1EndCoord]
                 startCoordToPathIndex[p1[0]] = i1
             return None
+
         originalNumPaths = len(paths)
         while res := findTwoPaths(paths):
             i1, i2 = res
@@ -187,52 +174,91 @@ class ContoursSketch(vsketch.SketchClass):
 
         start = time.time()
 
-
         # draw paths
         for i, path in enumerate(paths):
-            vsk.stroke(i+1)
+            # vsk.stroke(i+1)
             # vsk.polygon(path)
-            vsk.stroke(i+2)
+            # vsk.stroke(i+2)
             self.drawSmoothedPath(vsk, path)
-            # corner = 0.5
 
         timerC += time.time() - start
 
     def drawSmoothedPath(self,vsk, path):
         windowWidth = 5
-        smoothedPath = []
-        # assert len(path) > windowWidth
-        # if len(path) < window
-        # ipdb.set_trace()
-        # originalNumPoints = len(path)
-        
         path = np.array([path[0]] * (windowWidth-1) + path + [path[-1]] * (windowWidth-1))
         slidingWindow = np.lib.stride_tricks.sliding_window_view(path, windowWidth, axis=0)
-        for window in slidingWindow:
-            p = window.mean(axis=1) * self.scale
-            smoothedPath.append(p)
+        # for window in slidingWindow:
+        #     p = window.mean(axis=1) * self.scale
+        #     smoothedPath.append(p)
+
+        polygonPoints = slidingWindow.mean(axis=2)*self.scale
         
-        vsk.polygon(smoothedPath)
+        vsk.polygon(polygonPoints)
+
+    def drawFrame(self, vsk, heightMaskShape):
+        height, width = heightMaskShape
+        height -= 1
+        width -= 1
+
+        startX = 0
+        endX =  width*self.scale
+
+        startY = 0
+        endY = height*self.scale
+
+        vsk.rect(startX, startY, endX, endY)
+        size = 1.3
+        sizeOffset = 1.3
+        
+        numLongitudeMarkers = 10
+        longitudes = np.linspace(self.west, self.east, numLongitudeMarkers)
+        markerXPoses = np.linspace(startX, endX, numLongitudeMarkers)
+        for markerXPos, long in zip(markerXPoses, longitudes):
+            vsk.line(markerXPos, startY, markerXPos, startY-sizeOffset)
+            vsk.text(f"{long:.6f}", markerXPos+sizeOffset*0.5, startY-sizeOffset*0.7, size=size)
+
+        numLatitudeMarkers = 8
+        latitudes = np.linspace(self.north, self.south, numLatitudeMarkers)
+        markerYPoses = np.linspace(startY, endY, numLatitudeMarkers)
+        for markerYPos, lat in zip(markerYPoses, latitudes):
+            vsk.line(startX, markerYPos, startX-sizeOffset, markerYPos)
+            with vsk.pushMatrix():
+                vsk.translate(startX-7*sizeOffset, markerYPos)
+                # vsk.rotate(90, degrees=True)
+                vsk.text(f"{lat:.6f}", 0, 0, size=size, mode="transform")
+
+        
+        
 
     def draw(self, vsk: vsketch.Vsketch) -> None:
         vsk.size("a3", landscape=True)
         vsk.scale("mm")
 
+        boundsUK = [-12.036425, 49.627792 ,2.918008, 60.814924]
+        boundsAlps = [3.474233, 43.409836, 8.729127, 46.578498]
+        boundsGrenoble = [5.666199,44.986170, 5.879059, 45.213004]
+        boundsIceland = [-25.129087, 63.166260, -13.341700, 66.558755]
+
         tt = TerrainTiles(
             # bounds=[5.567466,  44.920668, 6.059677,45.321544],
-            # bounds=[3.474233, 43.409836, 8.729127, 46.578498],
-            bounds = [-12.036425, 49.627792 ,2.918008, 60.814924],
-            zoom=8,
+            bounds = boundsIceland,
+            zoom=9,
         )
+        self.west, self.south, self.east, self.north = tt.bounds_ll
 
-        maxDim = 2000
-        self.scale = 270/maxDim
+        maxDim = 3000
+        self.scale = 360/maxDim
         heights = tt.getCombinedTileDatasets(maxDimension=maxDim)
+        print(f"{heights.shape}")
+        # ipdb.set_trace()
 
-        contourLines = calcContourLines(heights)
+
+        contourAtHeight = calcContourLines(heights, contourDiff=75)
         
-        for contourLine in contourLines[:]:
-            self.drawContourLine(vsk, contourLine[:, :])
+        for contourHeight, contourHeightMask in contourAtHeight.items():
+            self.drawContourLine(vsk, contourHeight, contourHeightMask)
+        
+        # self.drawFrame(vsk, heights.shape)
         
         print(f"{timerA=}")
         print(f"{timerB=}")

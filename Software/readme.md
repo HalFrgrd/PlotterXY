@@ -19,3 +19,5 @@ Sample command (and good for calibrating position / scale):
 ## Useful projects
 - https://anvaka.github.io/peak-map/#7.68/47.727/-122.574
 - https://github.com/abey79/lines
+- https://print.get-map.org
+- https://wiki.openstreetmap.org/wiki/OSM_on_Paper

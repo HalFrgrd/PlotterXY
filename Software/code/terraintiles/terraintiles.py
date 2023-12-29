@@ -9,6 +9,7 @@ from matplotlib import pyplot as plt
 import numpy as np
 import ipdb
 from skimage.transform import rescale, resize
+from tqdm import tqdm
 
 
 LOG = logging.getLogger(__name__)
@@ -67,12 +68,15 @@ class TerrainTiles(object):
         """Find geotiffs that intersect provided bounds in cache or on web
         """
         toDownload = []
+        numCached = 0
         for tile in self.tiles:
             cachepath = self.tileFileName(tile)
             if cachepath.exists():
-                print(f"Found {tile=} in cache")
+                # print(f"Found {tile=} in cache")
+                numCached += 1
             else:
                 toDownload.append(tile)
+        print(f"{numCached=}")
         print(f"{len(toDownload)=}")
         for tiletoDownload in toDownload:
             print(f"Downloading {tiletoDownload=}")
@@ -94,8 +98,9 @@ class TerrainTiles(object):
         assert len(self.tiles) == numTilesHigh*numTilesWide
 
         h = np.zeros((numTilesHigh*512, numTilesWide*512), dtype=np.float32)
+        print(f"Not resized shape: {h.shape}")
 
-        for x in range(numTilesWide):
+        for x in tqdm(list(range(numTilesWide))):
             for y in range(numTilesHigh):
                 tile = mercantile.Tile(x+minX,y+minY,self.zoom)
                 assert tile in self.tiles
@@ -109,26 +114,37 @@ class TerrainTiles(object):
             # newHeight = h.shape[0] * scale
             # ipdb.set_trace()
             h = rescale(h, scale=scale, anti_aliasing=True, preserve_range=True)
+            print(f"Resized shaep: {h.shape}")
 
         
         return h
 
         
 
-def calcContourLines(heightMap):
-    minH = heightMap.min()
-    maxH = heightMap.max()
-    numContours = 20
-    contourH = (maxH-minH)// numContours
-    LOG.info(f"{maxH=} {minH=} {contourH=}")
-    assert contourH > 4
-
-    contourBitMaps = []
-    for cont in range(numContours):
-        contH = minH + contourH*cont
-        heigherThanContH = heightMap >= contH
-        contourBitMaps.append(heigherThanContH)
+def calcContourLines(heightMap, contourDiff = None, numContours=None):
+    assert contourDiff is not None or numContours is not None
+        
     
+    minH = max(heightMap.min(), 0)
+    maxH = heightMap.max()
+    assert minH < maxH, f"{minH=} {maxH}"
+    if numContours is None:
+        # ipdb.set_trace()
+        # numContours = int((maxH - minH ) // contourDiff) + 1
+        contours = np.arange(minH, maxH+1, contourDiff)
+    else:
+        contours = np.linspace(minH, maxH, numContours)
+    contours = np.concatenate(([0], contours))
+    contours = np.concatenate(([0], contours))
+    contours = np.unique(contours)
+    print(f"{contours.shape=}")
+    print(f"{contours=}")
+
+    contourBitMaps = {}
+    for contH in contours:
+        heigherThanContH = heightMap >= contH
+        contourBitMaps[contH] = heigherThanContH
+
     return contourBitMaps
 
 
