@@ -14,8 +14,8 @@ NUM_X_CELLS=(SHEET_WIDTH - 50) // CELL_WIDTH
 NUM_Y_CELLS=(SHEET_HEIGHT - 50) // CELL_WIDTH
 
 
-NUM_LANES = 2
-NUM_PATHS = 3
+NUM_LANES = 4
+NUM_PATHS = 4
 np.random.seed(1)
 
 
@@ -189,14 +189,26 @@ class GlobalLaneTracker:
     
     def tryMoveHere(self, currentCoord: Optional[Coord], newCoord: Coord):
         pathsAtCoord = self.pathsTaken[newCoord.x, newCoord.y, :]
-        unusedIndices = self.indices[~pathsAtCoord]
-        if unusedIndices.size > 0:
-            lane = np.random.choice(unusedIndices)
-            pathsAtCoord[lane] = True
-            # if currentCoord is not None:
-            #     self.transitions[(currentCoord.x, currentCoord.y, newCoord.x, newCoord.y)].append((currentCoord.lane, lane))
+        unusedLanes = self.indices[~pathsAtCoord]
 
-            return lane
+        if currentCoord is not None:
+            currentLane = currentCoord.lane
+        elif len(unusedLanes) > 0:
+            currentLane = np.random.choice(unusedLanes)
+        else:
+            return None
+
+        if currentLane in unusedLanes:
+            possNewLanes = []
+            if currentLane + 1 in unusedLanes:
+                possNewLanes.append(currentLane + 1)
+            if currentLane - 1 in unusedLanes:
+                possNewLanes.append(currentLane - 1)
+            if possNewLanes:
+                newLane = np.random.choice(possNewLanes)
+                pathsAtCoord[newLane] = True
+                pathsAtCoord[currentLane] = True
+                return newLane
         return None
 
 
@@ -385,15 +397,92 @@ class SimpleDrawing:
             SimpleDrawing.drawCornerSegment(vsk, prevPoint, point, nextPoint)
 
 
-class MazeSketch(vsketch.SketchClass):
-    # Sketch parameters:
-    # radius = vsketch.Param(2.0)
+from shapely import Point, LineString, Polygon, MultiPolygon, box
+import ipdb
 
-    def draw(self, vsk: vsketch.Vsketch) -> None:
-        vsk.size("a3", landscape=True)
-        # vsk.scale("mm")
+class ShapelyDrawing:
+    @staticmethod
+    def drawPaths(vsk, paths):
+        # ipdb.set_trace()
+
+               
+        highestPointAtCoord = {}
+        for pathIndex, path in enumerate(paths):
+            for point in path.points:
+                key = (point.x, point.y)
+                highestPointAtCoord[key] = max(point.lane, highestPointAtCoord.get(key, 0))
+                
+        nonOccluded = defaultdict(list)
+
+        def getGridSquare(x,y):
+            return box(x-0.5,y-0.5,x+0.5,y+0.5)
+
+        for pathIndex, path in enumerate(paths):
+            coords = path.points
+            coordsExtended = [coords[0]] + coords + [coords[-1]]
+            for seg in zip(coordsExtended, coordsExtended[1:],coordsExtended[2:]): # TODO end cap
+                point = seg[1]
+                # if highestPointAtCoord[(point.x, point.y)] > point.lane:
+                #     continue
+                segSimple = [(p.x,p.y) for p in seg]
+
+                line = LineString(segSimple)
+                buffered = line.buffer(0.4)
+                gridSquare = getGridSquare(point.x,point.y)
+                renderAtPoint = buffered.boundary.intersection(gridSquare)
+                # renderAtPoint = renderAtPoint.scale(10) 
+                nonOccluded[segSimple[1]].append((point.lane, pathIndex, renderAtPoint))
+                # with vsk.pushMatrix():
+                #     vsk.scale(50)
+                #     vsk.stroke(pathIndex+1)
+                #     vsk.geometry(renderAtPoint)
+
+        for coord, geomAtCoord in nonOccluded.items():
+            geomAtCoord = sorted(geomAtCoord, key = lambda tup: tup[0])[::-1]
 
 
+            occlusionGeom = None                
+            for lane, pathIndex, geom in geomAtCoord:
+                if occlusionGeom is None:
+                    occlusionGeom = geom.convex_hull
+                    toDraw = geom
+                else:
+                    toDraw = geom.difference(occlusionGeom)
+
+                with vsk.pushMatrix():
+                    vsk.scale(50)
+                    vsk.stroke(pathIndex+1)
+                    vsk.geometry(toDraw)
+
+        # occluded = []
+        # for pathIndex, pathPolygon in enumerate(nonOccluded):
+
+        #     occludedPath = Polygon(pathPolygon)
+        #     for point in paths[pathIndex].points:
+        #         # if point.x == 0 and point.y == 4:
+        #         #     ipdb.set_trace()
+        #         highestPathIndex = highestPathIndexAtCoord[(point.x, point.y)]
+        #         if highestPathIndex == pathIndex:
+        #             continue
+        #         highestPath = nonOccluded[highestPathIndex]
+        #         gridSquare = 
+        #         highestPathAtGridSquare = highestPath.intersection(gridSquare)
+        #         occludedPath = occludedPath.difference(highestPathAtGridSquare)
+            
+        #     occluded.append(occludedPath)
+        
+        # for pathIndex, pathPolygon in enumerate(nonOccluded):
+        #     # # get rid of lines that werent in the orignal nonOccluded path
+        #     # nonOccludedBoundary = nonOccluded[pathIndex].boundary
+        #     # occludedBoundary = occluded[pathIndex].boundary
+        #     # toDraw = occludedBoundary.intersection(nonOccludedBoundary)
+        #     vsk.stroke(pathIndex+1)
+        #     vsk.geometry(toDraw)
+
+
+class RandomPathGenerator:
+    @staticmethod
+    def getPaths():
         paths = []
         globalLaneTracker = GlobalLaneTracker()
         
@@ -409,49 +498,59 @@ class MazeSketch(vsketch.SketchClass):
                 if (lane := globalLaneTracker.tryMoveHere(path.getLastCoord(), newCoord)) is not None:
                     newCoord.lane = lane
                     path.addPoint(newCoord)
-                else:
-                    print("Length of path is ", len(path.points))
-                    break
+            print("Length of path is ", len(path.points))
 
             paths.append(path)
+
+        return paths
+class MazeSketch(vsketch.SketchClass):
+    # Sketch parameters:
+    # radius = vsketch.Param(2.0)
+
+    def draw(self, vsk: vsketch.Vsketch) -> None:
+        vsk.size("a3", landscape=True)
+        # vsk.scale("mm")
+
+        paths = RandomPathGenerator.getPaths()
 
         ### Drawing
         
         # draw the grid
-        vsk.stroke(len(paths)+1)
-        for i in range(NUM_X_CELLS):
-            lineStart = Coord(i, 0, 0).toSVGCoord()
-            lineEnd = Coord(i, NUM_Y_CELLS -1, 0).toSVGCoord()
-            vsk.line(lineStart.x, lineStart.y, lineEnd.x, lineEnd.y)
+        # vsk.stroke(len(paths)+1)
+        # for i in range(NUM_X_CELLS):
+        #     lineStart = Coord(i, 0, 0).toSVGCoord()
+        #     lineEnd = Coord(i, NUM_Y_CELLS -1, 0).toSVGCoord()
+        #     vsk.line(lineStart.x, lineStart.y, lineEnd.x, lineEnd.y)
                     
-        for i in range(NUM_Y_CELLS):
-            lineStart = Coord(0, i, 0).toSVGCoord()
-            lineEnd = Coord(NUM_X_CELLS-1, i, 0).toSVGCoord()
-            vsk.line(lineStart.x, lineStart.y, lineEnd.x, lineEnd.y)
+        # for i in range(NUM_Y_CELLS):
+        #     lineStart = Coord(0, i, 0).toSVGCoord()
+        #     lineEnd = Coord(NUM_X_CELLS-1, i, 0).toSVGCoord()
+            # vsk.line(lineStart.x, lineStart.y, lineEnd.x, lineEnd.y)
 
         globalSegments = defaultdict(list)
-        for path in paths:
-            for segment in path.segments:
-                globalSegments[(segment.point.x, segment.point.y)].append(segment)
-        
-        def getHighestSegmentAt(point: Coord):
-            segmentsAtCoord = globalSegments[(point.x, point.y)]
-            assert len(segmentsAtCoord)
-            return max(segmentsAtCoord, key= lambda seg: seg.point.lane )
-
         for pathIndex, path in enumerate(paths):
-            vsk.penWidth("0.5mm",pathIndex+1)
-            vsk.stroke(pathIndex+1)
+            for point in path.points:
+                globalSegments[(point.x, point.y)].append((point.lane, pathIndex))
+    
+ 
 
-            # for i, (segmentStart, segmentEnd) in enumerate(zip(path.points, path.points[1:])):
-            #     completion = 1.0 #(i / len(path.points))* 0.6 + 0.4
-            #     if globalLaneTracker.isHighestPathAtMid(segmentStart, segmentEnd):
-            #         SimpleDrawing.drawSegmentMid(vsk, segmentStart, segmentEnd, color, completion)
+        ShapelyDrawing.drawPaths(vsk, paths)
+
+        # for pathIndex, path in enumerate(paths):
+        #     vsk.penWidth("0.5mm",pathIndex+1)
+        #     vsk.stroke(pathIndex+1)
+
+        #     # for i, (segmentStart, segmentEnd) in enumerate(zip(path.points, path.points[1:])):
+        #     #     completion = 1.0 #(i / len(path.points))* 0.6 + 0.4
+        #     #     if globalLaneTracker.isHighestPathAtMid(segmentStart, segmentEnd):
+        #     #         SimpleDrawing.drawSegmentMid(vsk, segmentStart, segmentEnd, color, completion)
             
-            for i, mazeSegment in enumerate(path.segments):
-                # if globalLaneTracker.isHighestPathAtEnd(point):
-                occluderSeg = getHighestSegmentAt(mazeSegment.point)
-                SimpleDrawing.drawSegment(vsk, mazeSegment, occluderSeg)
+        #     for i, mazeSegment in enumerate(path.segments):
+        #         # if globalLaneTracker.isHighestPathAtEnd(point):
+        #         occluderSeg = getHighestSegmentAt(mazeSegment.point)
+        #         SimpleDrawing.drawSegment(vsk, mazeSegment, occluderSeg)
+
+        # vsk.vpype("linemerge linesimplify")
 
 
     def finalize(self, vsk: vsketch.Vsketch) -> None:
