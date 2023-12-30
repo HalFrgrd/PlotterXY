@@ -26,65 +26,82 @@ class Circles2Sketch(vsketch.SketchClass):
             c[:,2] = 0
             return c
 
-        circles = []
-        circleRadius = 4
-        numCirclesOnRings = 80
-        centerOffset = 10
-        for cIndex, theta in enumerate(np.linspace(0,2*np.pi, numCirclesOnRings, endpoint=False)):
-            c = genCircle()
-            c *= circleRadius
-            c = c - np.array((centerOffset,0,0))
-            r = R.from_rotvec((0,theta,0), degrees=False)
-            c = r.apply(c)
-            circles.append(c)
-        # rings along torus1
-        for cIndex, theta in enumerate(np.linspace(0,2*np.pi, 20, endpoint=False)):
-            c = genCircle()
-            c = R.from_rotvec((np.pi/2,0,0), degrees=False).apply(c)
-            radius = centerOffset - np.cos(theta)*circleRadius
-            c *= radius
-            yOffset = np.sin(theta)*circleRadius
-            c -= np.array([0,yOffset,0])
+        polygons = []
+        
+        def genTorus(circleRadius = 4, centerOffset = 10):
+            numCirclesOnRings = 20
+            torusCircles = []
+            for cIndex, theta in enumerate(np.linspace(0,2*np.pi, numCirclesOnRings, endpoint=False)):
+                c = genCircle()
+                c *= circleRadius
+                c = c - np.array((centerOffset,0,0))
+                r = R.from_euler("Y", theta, degrees=False)
+                c = r.apply(c)
+                torusCircles.append(c)
+            # rings along torus
+            for cIndex, theta in enumerate(np.linspace(0,2*np.pi, 20, endpoint=False)):
+                c = genCircle()
+                c = R.from_euler("X", np.pi/2, degrees=False).apply(c)
+                radius = centerOffset - np.cos(theta)*circleRadius
+                c *= radius
+                yOffset = np.sin(theta)*circleRadius
+                c -= np.array([0,yOffset,0])
 
-            circles.append(c)
+                torusCircles.append(c)
+            return torusCircles
+        
+
+        metaTorusOffset = 6.5
+        torus1Circles = genTorus(circleRadius = 1, centerOffset=metaTorusOffset)
+        for c in torus1Circles:
+            polygons.append(c)
 
         
-        for cIndex, theta in enumerate(np.linspace(0,2*np.pi, numCirclesOnRings, endpoint=False)):
-            c = genCircle()
-            c *= circleRadius
-            c = R.from_rotvec((np.pi/2,0,0), degrees=False).apply(c)
-            c = c - np.array((centerOffset,0,0))
-            c = R.from_rotvec((0,0,theta), degrees=False).apply(c)
-            c = c + np.array((centerOffset,0,0))
-            circles.append(c)
-        # rings along torus 2
-        for cIndex, theta in enumerate(np.linspace(0,2*np.pi, 20, endpoint=False)):
-            c = genCircle()
-            radius = centerOffset - np.cos(theta)*circleRadius
-            c *= radius
-            c += np.array((centerOffset,0,0))
-            zOffset = np.sin(theta)*circleRadius
-            c -= np.array([0,0,zOffset])
+        for torusIndex, theta in enumerate(np.linspace(0,2*np.pi, 10, endpoint=False)):
+            torusCircles = genTorus(circleRadius = 1, centerOffset=2.5)
+            translateX = np.cos(theta)
+            translateY = np.sin(theta)
+            for c in torusCircles:
+                c = R.from_euler("X", np.pi/2, degrees=False).apply(c)
+                c = R.from_euler("Y", -theta, degrees=False).apply(c)
+                # c -= np.array((10, 0,0))
+                c -= np.array((translateX, 0, translateY)) * metaTorusOffset
+                polygons.append(c)
 
-            circles.append(c)
+        # polygons.append(np.array([[0,0,0], [20,0,0]]))
+        # polygons.append(np.array([[0,0,0], [0,20,0]]))
+        # polygons.append(np.array([[0,0,0], [0,20,20]]))
 
-        cameraZ = 60
-        planeZ = 50
+        cameraZ = 4
+        planeZ = 3
 
-        for cTilted in circles:
-            rotation = R.from_rotvec((self.rotationX,self.rotationY,0), degrees=False)
-            cTilted = rotation.apply(cTilted)
-            # cTilted = yAxisR.apply(cTilted)
-            # cTilted = zAxisR.apply(cTilted)
+        maxX = max([np.max(polygon[:,0]) for polygon in polygons])
+        maxY = max([np.max(polygon[:,1]) for polygon in polygons])
+        maxZ = max([np.max(polygon[:,2]) for polygon in polygons])
+        minX = min([np.min(polygon[:,0]) for polygon in polygons])
+        minY = min([np.min(polygon[:,1]) for polygon in polygons])
+        minZ = min([np.min(polygon[:,2]) for polygon in polygons])
+        maxs = np.array((maxX, maxY, maxZ))
+        mins = np.array((minX, minY, minZ))
+
+        centeringTranslation = mins + (maxs-mins)/2
+        centeringScaling = 1/np.min(maxs-mins)
+
+        finalXRotation = R.from_euler("X", self.rotationX, degrees=False) 
+        finalYRotation = R.from_euler("Y", self.rotationY, degrees=False) 
+
+        for cTilted in polygons:
+            cTilted -= centeringTranslation
+            cTilted *= centeringScaling
+
+            cTilted = finalXRotation.apply(cTilted)
+            cTilted = finalYRotation.apply(cTilted)
 
             # shrink each point depending on how far it is on the z axis
-            shrinkage =  (planeZ - cameraZ) / ( cTilted[:,2] - cameraZ) 
-            # print(shrinkage.shape)
-            # print(cTilted.shape)
+            shrinkage =    (cameraZ - planeZ)  / ( cameraZ - cTilted[:,2])
             cTilted = cTilted * shrinkage[:, np.newaxis]
 
-
-            vsk.polygon(cTilted[:,:2], close=True)
+            vsk.polygon(cTilted[:,:2]*40, close=True)
 
 
 
