@@ -10,6 +10,7 @@ class Circles2Sketch(vsketch.SketchClass):
     numLines = vsketch.Param(50)
     rotationX = vsketch.Param(2.0)
     rotationY = vsketch.Param(2.0)
+    zThreshold = vsketch.Param(0.01)
 
     shift = vsketch.Param(0.2)
 
@@ -19,7 +20,7 @@ class Circles2Sketch(vsketch.SketchClass):
         
         def genCircle():
             circleEdges = 40
-            theta = np.linspace(0,2*np.pi, circleEdges, endpoint=False)
+            theta = np.linspace(0,2*np.pi, circleEdges, endpoint=True)
             c = np.tile(theta, (3,1)).T
             c[:,0] = np.cos(c[:,0])
             c[:,1] = np.sin(c[:,1])
@@ -29,7 +30,7 @@ class Circles2Sketch(vsketch.SketchClass):
         polygons = []
         
         def genTorus(circleRadius = 4, centerOffset = 10):
-            numCirclesOnRings = 20
+            numCirclesOnRings = 40
             torusCircles = []
             for cIndex, theta in enumerate(np.linspace(0,2*np.pi, numCirclesOnRings, endpoint=False)):
                 c = genCircle()
@@ -39,7 +40,7 @@ class Circles2Sketch(vsketch.SketchClass):
                 c = r.apply(c)
                 torusCircles.append(c)
             # rings along torus
-            for cIndex, theta in enumerate(np.linspace(0,2*np.pi, 20, endpoint=False)):
+            for cIndex, theta in enumerate(np.linspace(0,2*np.pi, 10, endpoint=False)):
                 c = genCircle()
                 c = R.from_euler("X", np.pi/2, degrees=False).apply(c)
                 radius = centerOffset - np.cos(theta)*circleRadius
@@ -51,20 +52,19 @@ class Circles2Sketch(vsketch.SketchClass):
             return torusCircles
         
 
-        metaTorusOffset = 6.5
+        metaTorusOffset = 4
         torus1Circles = genTorus(circleRadius = 1, centerOffset=metaTorusOffset)
         for c in torus1Circles:
             polygons.append(c)
 
         
-        for torusIndex, theta in enumerate(np.linspace(0,2*np.pi, 10, endpoint=False)):
+        for torusIndex, theta in enumerate(np.linspace(0,2*np.pi, 3, endpoint=False)):
             torusCircles = genTorus(circleRadius = 1, centerOffset=2.5)
             translateX = np.cos(theta)
             translateY = np.sin(theta)
             for c in torusCircles:
                 c = R.from_euler("X", np.pi/2, degrees=False).apply(c)
                 c = R.from_euler("Y", -theta, degrees=False).apply(c)
-                # c -= np.array((10, 0,0))
                 c -= np.array((translateX, 0, translateY)) * metaTorusOffset
                 polygons.append(c)
 
@@ -89,8 +89,13 @@ class Circles2Sketch(vsketch.SketchClass):
 
         finalXRotation = R.from_euler("X", self.rotationX, degrees=False) 
         finalYRotation = R.from_euler("Y", self.rotationY, degrees=False) 
-
+        
+        # vsk.fill(1)
         for cTilted in polygons:
+            # meanZ = cTilted[:,2].mean()
+            # zNormalized = ( (maxZ- meanZ) / (maxZ-minZ))
+            # vsk.penWidth(f"{zNormalized:.2f}mm")
+
             cTilted -= centeringTranslation
             cTilted *= centeringScaling
 
@@ -101,7 +106,46 @@ class Circles2Sketch(vsketch.SketchClass):
             shrinkage =    (cameraZ - planeZ)  / ( cameraZ - cTilted[:,2])
             cTilted = cTilted * shrinkage[:, np.newaxis]
 
-            vsk.polygon(cTilted[:,:2]*40, close=True)
+            # cTilted = cTilted[cTilted[:,2] > 0 ]
+
+            segmentsTrue = []
+            segmentsFalse = []
+            cTilted[:,2] += self.zThreshold
+            points = cTilted[:,:]*40
+            cond = cTilted[:,2] > 0
+
+            def appendSegment(segment, segmentCond):
+                if segmentCond:
+                    segmentsTrue.append(segment)
+                else:
+                    segmentsFalse.append(segment)
+
+            segmentCond = None
+            segment = []
+            pointIndex = 0
+            while pointIndex < len(points):
+                point = points[pointIndex]
+                if segmentCond is not None and segmentCond != cond[pointIndex]:
+                    lastPoint = segment[-1]
+                    joiningPointDistance = point[2] / (point[2] - lastPoint[2])
+                    joiningPoint = lastPoint * joiningPointDistance + point*(1-joiningPointDistance)
+                    segment.append(joiningPoint)
+                    appendSegment(segment, segmentCond)
+                    segment = [joiningPoint]
+                segmentCond = cond[pointIndex]
+                segment.append(point)
+                pointIndex  += 1
+            appendSegment(segment, segmentCond)
+
+            vsk.stroke(2)
+            for segment in segmentsTrue:
+                segment2d = [point[:2] for point in segment]
+                vsk.polygon(segment2d, close=False)
+
+            vsk.stroke(3)
+            for segment in segmentsFalse:
+                segment2d = [point[:2] for point in segment]
+                # vsk.polygon(segment2d, close=False)
 
 
 
