@@ -1,27 +1,43 @@
 import vsketch
 from scipy.spatial.transform import Rotation as R
-from shapely import Polygon, force_2d
+from shapely import Polygon
 
 import numpy as np
+from tqdm import tqdm
+
+from vsketch.fill import generate_fill
+
 
 class IsometricColumnsSketch(vsketch.SketchClass):
     # Sketch parameters:
     # radius = vsketch.Param(2.0)
 
     def draw(self, vsk: vsketch.Vsketch) -> None:
-        vsk.size("a4", landscape=True)
+        vsk.size("a1", landscape=True)
         vsk.scale("mm")
 
-        NUM_X_POINTS = 30
-        NUM_Y_POINTS = 30
+        NUM_X_POINTS = 28
+        NUM_Y_POINTS = 28
 
-        xCoords, yCoords = np.indices((NUM_X_POINTS, NUM_Y_POINTS), dtype=np.float32)
-        xCoords -= NUM_X_POINTS*0.5 
-        yCoords -= NUM_Y_POINTS*0.5
-        # print(xCoords, yCoords)
-        heightMap = np.sin((xCoords**2 + yCoords**2) * 0.04 )*0.5
-        heightMap += abs(np.min(heightMap)) + 1
 
+        noiseScale = 0.1
+        noise = vsk.noise(
+            np.arange(0, NUM_X_POINTS+1)*noiseScale,
+            np.arange(0, NUM_Y_POINTS+1)*noiseScale
+            )
+
+        heightMap = np.sin(noise*8)*1.2 
+        heightMap += abs(np.min(heightMap))
+        minHeight = np.min(heightMap)
+        maxHeight = np.max(heightMap)
+        heightMap += 1
+
+        heightMap[8:10,:] = 0
+        heightMap[18:20,:] = 0
+
+        heightMap[:, 8:10] = 0
+        heightMap[:, 18:20] = 0
+        
         coordToPolygons = {}
 
         
@@ -32,32 +48,30 @@ class IsometricColumnsSketch(vsketch.SketchClass):
         
         for x in range(NUM_X_POINTS):
             for y in range(NUM_Y_POINTS):
-
                 polygons = []
-
                 z = heightMap[x,y]
-
-                polygons.append( [
-                    (x,y,0),
-                    (x+1,y,0),
-                    (x+1,y,z),
-                    (x,y,z),
-                    (x,y,0)
-                ])
-                polygons.append( [
-                    (x+1,y,0),
-                    (x+1,y-1,0),
-                    (x+1,y-1,z),
-                    (x+1,y,z),
-                    (x+1,y,0),
-                ] )
-                polygons.append( [
-                    (x,y,z),
-                    (x+1,y,z),
-                    (x+1,y-1,z),
-                    (x,y-1,z),
-                    (x,y,z),
-                ])
+                if z > 0:
+                    polygons.append( [
+                        (x,y,0),
+                        (x+1,y,0),
+                        (x+1,y,z),
+                        (x,y,z),
+                        (x,y,0)
+                    ])
+                    polygons.append( [
+                        (x+1,y,0),
+                        (x+1,y-1,0),
+                        (x+1,y-1,z),
+                        (x+1,y,z),
+                        (x+1,y,0),
+                    ] )
+                    polygons.append( [
+                        (x,y,z),
+                        (x+1,y,z),
+                        (x+1,y-1,z),
+                        (x,y-1,z),
+                        (x,y,z),
+                    ])
 
                 rotatedPolygons = []
                 for polygon in polygons:
@@ -72,16 +86,41 @@ class IsometricColumnsSketch(vsketch.SketchClass):
 
         occlusionMask = Polygon()
 
-        with vsk.pushMatrix():
-            vsk.scale(5)
-            for (x,y),polygons in coordToPolygons.items():
+    
 
-                for polygon in polygons:
+        with vsk.pushMatrix():
+            vsk.scale(15)
+            for (x,y),polygons in tqdm(coordToPolygons.items()):
+                unionOfPolygons = Polygon()
+
+                for polygonIndex, polygon in enumerate(polygons):
+                    # if polygonIndex != 1:
+                    #     continue
+
                     shapelyPolygon = Polygon(polygon)
                     occludedPolygon = shapelyPolygon.difference(occlusionMask)
+                    unionOfPolygons = unionOfPolygons.union(shapelyPolygon)
+                    if polygonIndex == 1:
 
+                        filled = generate_fill(occludedPolygon, 0.05,0)
+                        vsk.stroke(2)
+                        vsk.geometry(filled.as_mls())
+
+                    elif polygonIndex == 2:
+                        minWidth = 0.03
+                        maxWidth = 0.12
+
+                        widthRange = maxWidth - minWidth
+                        
+                        height = heightMap[x,y]
+                        penWidth = minWidth + widthRange*( (height - minHeight) / (maxHeight - minHeight) )
+                        vsk.stroke(3)
+                        # vsk.penWidth(penWidth)
+                        vsk.geometry(generate_fill(occludedPolygon,penWidth,0).as_mls())
+                    # else:
+                    vsk.stroke(1)
                     vsk.geometry((occludedPolygon))
-                    occlusionMask = occlusionMask.union(shapelyPolygon)
+                occlusionMask = occlusionMask.union(unionOfPolygons)
         
 
         # implement your sketch here
