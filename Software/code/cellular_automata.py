@@ -6,12 +6,12 @@ from beartype import beartype
 ################## CONFIG
 
 # X is across, Y is down
-SHEET_HEIGHT=297 #mm
-SHEET_WIDTH=420 #mm
+SHEET_HEIGHT=340 #mm
+SHEET_WIDTH=445 #mm
 # SHEET_WIDTH, SHEET_HEIGHT = SHEET_HEIGHT, SHEET_WIDTH
 
 STROKE_WIDTH = min(SHEET_WIDTH, SHEET_HEIGHT)*0.0005
-NUM_AUTOMATA=4
+NUM_AUTOMATA=5
 NUM_AUTOMATON_CELLS=50
 SPACING_BETWEEN_AUTOMATA = int(max(SHEET_HEIGHT, SHEET_WIDTH)*0.01)
 
@@ -36,7 +36,17 @@ def next_from_rule(rule: np.int8, row):
 
 @beartype
 def generate_grid(rule, height: int, width: int) -> np.ndarray:
-    row = np.random.binomial(1, 0.3, size=(width, )).astype(bool)
+    # row = np.random.binomial(1, 0.3, size=(width, )).astype(bool)
+    row = np.array([0,1,0,0,0,1,0,0,0,1,0,0,0,0,0,1,0,1,0,1,0,1,1,0,0,1,0,0,1,0,0,1,0,1,0,0,0,1,0,0]).astype(bool)
+    # import ipdb
+    # ipdb.set_trace()
+    if width > len(row):
+        # row = np.pad(row, width)
+        x = np.zeros((width,), dtype=bool)
+        x[:len(row)] = row
+        row =  x
+    else:
+        row = row[:width]
     # row = np.zeros(width).astype(bool)
     # row[width//2] = True
     grid = np.zeros((height, width), dtype=bool)
@@ -66,7 +76,7 @@ def draw_dot(x,y,radius, fill):
 
 
 for automaton in range(NUM_AUTOMATA):
-    automaton_rule = np.int8([30, 122, 126, 150][automaton])
+    automaton_rule = np.int8([73, 122, 126, 150, 60][automaton])
     svg_automaton_start_x = SVG_MIN_AUTOMATON_X + automaton * (SPACING_BETWEEN_AUTOMATA + SINGLE_AUTOMATA_WIDTH)
     # automaton_svg = dwg.svg(insert=(svg_automaton_start_x, SVG_MIN_AUTOMATON_Y), size=(SINGLE_AUTOMATA_WIDTH, SINGLE_AUTOMATA_HEIGHT))
 

@@ -17,9 +17,9 @@ default_profile = "plotterxy"
 
 [gwrite.plotterxy]
 document_start = "G17 G21 G90 G54\n"
-segment_first = "G01 X{x:.2f} Y{y:.2f} F4000\nG01 Z-3.00 F800\nG4 P0.02\n"
+segment_first = "G01 X{x:.2f} Y{y:.2f} F4000\nG01 Z-3.00 F800\nG4 P0.01\n"
 segment = "G01 X{x:.2f} Y{y:.2f} F4000\n"
-segment_last = "G01 X{x:.2f} Y{y:.2f} F4000\nG01 Z0.00 F800\nG4 P0.02\n"
+segment_last = "G01 X{x:.2f} Y{y:.2f} F4000\nG01 Z0.00 F800\nG4 P0.01\n"
 document_end = "G01 X0.00 Y0.00 F4000\n"
 unit = "mm"
 invert_y = "False"

@@ -4,7 +4,6 @@ arrow==1.3.0
 asteval==0.9.31
 asttokens==2.4.1
 attrs==23.1.0
-axi @ git+https://github.com/fogleman/axi@a5a12f01633076232be84a4e3321c80c7b9656b5
 beartype==0.16.4
 beautifulsoup4==4.12.2
 binaryornot==0.4.4
@@ -99,7 +98,6 @@ tzdata==2023.3
 ujson==5.9.0
 urllib3==2.1.0
 vpype==1.13.0
-vpype-explorations @ git+https://github.com/abey79/vpype-explorations@49bc7f9b709a8cdbbfa6bcadafb3ccca9e22c0c5
 vpype-gcode==0.13.0
 vpype-occult==0.4.0
 vsketch==1.0.0

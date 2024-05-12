@@ -15,11 +15,11 @@ class Circles2Sketch(vsketch.SketchClass):
     shift = vsketch.Param(0.2)
 
     def draw(self, vsk: vsketch.Vsketch) -> None:
-        vsk.size("a3", landscape=True)
         vsk.scale("cm")
+        vsk.size("445mmx340mm")
         
         def genCircle():
-            circleEdges = 40
+            circleEdges = 200
             theta = np.linspace(0,2*np.pi, circleEdges, endpoint=True)
             c = np.tile(theta, (3,1)).T
             c[:,0] = np.cos(c[:,0])
@@ -29,21 +29,21 @@ class Circles2Sketch(vsketch.SketchClass):
 
         polygons = []
         
-        def genTorus(circleRadius = 4, centerOffset = 10):
+        def genTorus(circleRadius = 4, centerOffset = 10, power=1.0):
             numCirclesOnRings = 40
             torusCircles = []
-            for cIndex, theta in enumerate(np.linspace(0,2*np.pi, numCirclesOnRings, endpoint=False)):
-                c = genCircle()
-                c *= circleRadius
-                c = c - np.array((centerOffset,0,0))
-                r = R.from_euler("Y", theta, degrees=False)
-                c = r.apply(c)
-                torusCircles.append(c)
+            # for cIndex, theta in enumerate(np.linspace(0,2*np.pi, numCirclesOnRings, endpoint=False)):
+            #     c = genCircle()
+            #     c *= circleRadius
+            #     c = c - np.array((centerOffset,0,0))
+            #     r = R.from_euler("Y", theta, degrees=False)
+            #     c = r.apply(c)
+            #     torusCircles.append(c)
             # rings along torus
-            for cIndex, theta in enumerate(np.linspace(0,2*np.pi, 10, endpoint=False)):
+            for cIndex, theta in enumerate(np.linspace(0,2*np.pi, 41, endpoint=False)):
                 c = genCircle()
                 c = R.from_euler("X", np.pi/2, degrees=False).apply(c)
-                radius = centerOffset - np.cos(theta)*circleRadius
+                radius = centerOffset - np.sign(np.cos(theta)) *np.abs(np.cos(theta))**power *circleRadius
                 c *= radius
                 yOffset = np.sin(theta)*circleRadius
                 c -= np.array([0,yOffset,0])
@@ -52,28 +52,29 @@ class Circles2Sketch(vsketch.SketchClass):
             return torusCircles
         
 
-        metaTorusOffset = 4
-        torus1Circles = genTorus(circleRadius = 1, centerOffset=metaTorusOffset)
-        for c in torus1Circles:
-            polygons.append(c)
+        # metaTorusOffset = 4
+        # torus1Circles = genTorus(circleRadius = 1, centerOffset=metaTorusOffset)
+        # for c in torus1Circles:
+        #     polygons.append(c)
 
+        NUM_TORUSES = 4
         
-        for torusIndex, theta in enumerate(np.linspace(0,2*np.pi, 3, endpoint=False)):
-            torusCircles = genTorus(circleRadius = 1, centerOffset=2.5)
-            translateX = np.cos(theta)
-            translateY = np.sin(theta)
+        for torusIndex, theta in enumerate(np.linspace(0,0.2*np.pi, NUM_TORUSES, endpoint=False)):
+            torusCircles = genTorus(circleRadius = 0.6, centerOffset=2.5, power=np.linspace(0.3,1.0,NUM_TORUSES)[torusIndex])
+            translateX = torusIndex*2.0
+            translateY = 0
             for c in torusCircles:
                 c = R.from_euler("X", np.pi/2, degrees=False).apply(c)
-                c = R.from_euler("Y", -theta, degrees=False).apply(c)
-                c -= np.array((translateX, 0, translateY)) * metaTorusOffset
+                c = R.from_euler("Y",  np.pi/2 - theta, degrees=False).apply(c)
+                c -= np.array((translateX, 0, translateY))
                 polygons.append(c)
 
         # polygons.append(np.array([[0,0,0], [20,0,0]]))
         # polygons.append(np.array([[0,0,0], [0,20,0]]))
         # polygons.append(np.array([[0,0,0], [0,20,20]]))
 
-        cameraZ = 4
-        planeZ = 3
+        cameraZ = 20
+        planeZ = 4
 
         maxX = max([np.max(polygon[:,0]) for polygon in polygons])
         maxY = max([np.max(polygon[:,1]) for polygon in polygons])
@@ -87,8 +88,8 @@ class Circles2Sketch(vsketch.SketchClass):
         centeringTranslation = mins + (maxs-mins)/2
         centeringScaling = 1/np.min(maxs-mins)
 
-        finalXRotation = R.from_euler("X", self.rotationX, degrees=False) 
-        finalYRotation = R.from_euler("Y", self.rotationY, degrees=False) 
+        # finalXRotation = R.from_euler("X", self.rotationX, degrees=False) 
+        # finalYRotation = R.from_euler("Y", self.rotationY, degrees=False) 
         
         # vsk.fill(1)
         for cTilted in polygons:
@@ -99,8 +100,8 @@ class Circles2Sketch(vsketch.SketchClass):
             cTilted -= centeringTranslation
             cTilted *= centeringScaling
 
-            cTilted = finalXRotation.apply(cTilted)
-            cTilted = finalYRotation.apply(cTilted)
+            # cTilted = finalXRotation.apply(cTilted)
+            # cTilted = finalYRotation.apply(cTilted)
 
             # shrink each point depending on how far it is on the z axis
             shrinkage =    (cameraZ - planeZ)  / ( cameraZ - cTilted[:,2])
@@ -112,7 +113,7 @@ class Circles2Sketch(vsketch.SketchClass):
             segmentsFalse = []
             cTilted[:,2] += self.zThreshold
             points = cTilted[:,:]*40
-            cond = cTilted[:,2] > 0
+            cond = cTilted[:,2] > -100
 
             def appendSegment(segment, segmentCond):
                 if segmentCond:

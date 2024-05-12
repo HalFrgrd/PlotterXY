@@ -17,7 +17,7 @@ NUM_Y_CELLS=(SHEET_HEIGHT - 50) // CELL_WIDTH
 VSK_SCALE = 10 * (CELL_WIDTH / 3)
 
 
-NUM_LANES = 6
+NUM_LANES = 10
 NUM_PATHS = 10
 np.random.seed(1)
 
@@ -107,7 +107,7 @@ class ShapelyDrawing:
                 segSimple = [(p.x,p.y) for p in seg]
 
                 line = LineString(segSimple)
-                buffered = line.buffer(0.4)
+                buffered = line.buffer(0.46)
                 gridSquare = getGridSquare(point.x,point.y)
                 geomToDraw = buffered.boundary.intersection(gridSquare)
                 geomToDraw = geomToDraw.union(line.intersection(gridSquare))
@@ -118,7 +118,7 @@ class ShapelyDrawing:
                 nonOccluded[segSimple[1]].append((point.lane, pathIndex, geomToDraw, geomMask))
         
 
-        geomPerPath = defaultdict(Point)
+        geomPerPath = defaultdict(Polygon)
         for coord, geomAtCoord in nonOccluded.items():
             geomAtCoord = sorted(geomAtCoord, key = lambda tup: tup[0])[::-1]
     
@@ -132,7 +132,7 @@ class ShapelyDrawing:
             # ipdb.set_trace()
             with vsk.pushMatrix():
                 vsk.scale(VSK_SCALE)
-                vsk.stroke(pathIndex+2)
+                vsk.stroke(pathIndex%2 + 2)
                 # vsk.strokeWeight(3)
                 vsk.geometry(geomForPath)
 
@@ -180,7 +180,7 @@ class RandomPathGenerator:
         for pathIndex in range(NUM_PATHS):
             path = MazePath()
 
-            for moveIndex in range(500):
+            for moveIndex in range(30):
                 possNewCoords = path.possNewCoords()
                 np.random.shuffle(possNewCoords)
                 possNewCoords.sort(key=self._getHowManyLanesInUse)
@@ -190,6 +190,7 @@ class RandomPathGenerator:
                     newCoord.lane = lane
                     path.addPoint(newCoord)
             print("Length of path is ", len(path.points))
+            # if len(path.points) > 8:
             paths.append(path)
         return paths
 

@@ -2,6 +2,8 @@ board: MKS-DLC32
 name: K40 MOD
 meta: 2022-12-27 by Tong
 
+Hostname: fluidncsmall
+
 kinematics:
   corexy:
 
@@ -20,7 +22,7 @@ axes:
     steps_per_mm: 80.000
     max_rate_mm_per_min: 4000.000
     acceleration_mm_per_sec2: 700.000
-    max_travel_mm: 440.000
+    max_travel_mm: 445.000
     soft_limits: true
     homing:
       cycle: 2
@@ -35,7 +37,7 @@ axes:
     motor0:
       limit_neg_pin: gpio.36:low
       hard_limits: true
-      pulloff_mm: 6.100
+      pulloff_mm: 3.000
       stepstick:
         step_pin: I2SO.1
         direction_pin: I2SO.2:low
@@ -45,7 +47,7 @@ axes:
     steps_per_mm: 80.000
     max_rate_mm_per_min: 4000.000
     acceleration_mm_per_sec2: 700.000
-    max_travel_mm: 320.000
+    max_travel_mm: 340.000
     soft_limits: true
     homing:
       cycle: 1
@@ -60,7 +62,7 @@ axes:
     motor0:
       limit_neg_pin: gpio.35:low
       hard_limits: true
-      pulloff_mm: 8.500
+      pulloff_mm: 3.000
       stepstick:
         step_pin: I2SO.5
         direction_pin: I2SO.6:low
